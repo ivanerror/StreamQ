@@ -1,31 +1,31 @@
 # YouTube Downloader (GUI)
 
-Aplikasi desktop sederhana untuk mengunduh video/audio dari YouTube menggunakan `yt-dlp` dengan antarmuka GUI (Tkinter). Di Windows, aplikasi akan otomatis menyiapkan FFmpeg sehingga Anda bisa langsung pakai.
+A simple desktop app to download video/audio from YouTube using `yt-dlp` with a Tkinter-based GUI. On Windows, the app automatically prepares FFmpeg so you can use it right away.
 
-## Prasyarat
-- Windows 10/11 (direkomendasikan). macOS/Linux juga bisa, lihat catatan di bawah.
-- Python 3.8 atau lebih baru terpasang di sistem.
-- Koneksi internet (untuk instalasi dependensi dan unduhan FFmpeg di Windows).
-- Git (opsional, untuk kloning/push ke GitHub).
+## Prerequisites
+- Windows 10/11 recommended; macOS/Linux also supported (see notes below).
+- Python 3.8 or newer installed on your system.
+- Internet connection (for dependencies and FFmpeg download on Windows).
+- Git (optional, for cloning/pushing to GitHub).
 
-## Instalasi & Menjalankan (Windows)
+## Install & Run (Windows)
 
-Cara termudah adalah melalui skrip `run.bat` yang sudah disediakan:
+The easiest way is to use the included `run.bat` script:
 
-1. Klik dua kali `run.bat` dari File Explorer, atau jalankan via Terminal di folder proyek:
+1. Double-click `run.bat` from File Explorer, or run it from a terminal in the project folder:
    ```bat
    run.bat
    ```
-2. Skrip akan:
-   - Membuat virtual environment di `.venv/` (jika belum ada)
-   - Menginstal dependensi dari `requirements.txt`
-   - Menjalankan aplikasi GUI (`python main.py`)
+2. The script will:
+   - Create a virtual environment at `.venv/` (if it doesn’t exist)
+   - Install dependencies from `requirements.txt`
+   - Launch the GUI app (`python main.py`)
 
-Setelah jendela aplikasi terbuka, tempel URL YouTube, tambahkan ke antrean, lalu mulai unduh. Hasil audio/video secara default disimpan di dalam folder `py_downloader/` (lihat subfolder `audio` dan `video`).
+When the app window opens, paste a YouTube URL, add it to the queue, then start downloading. By default, audio/video outputs are saved under `py_downloader/` (see the `audio` and `video` subfolders).
 
-## Menjalankan Secara Manual (Windows/macOS/Linux)
+## Run Manually (Windows/macOS/Linux)
 
-Jika tidak ingin memakai `run.bat`, Anda bisa menjalankan manual dengan langkah standar Python:
+If you prefer not to use `run.bat`, you can run it manually with standard Python steps:
 
 ```bash
 python -m venv .venv
@@ -39,45 +39,44 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Catatan FFmpeg:
-- Windows: aplikasi akan otomatis mengunduh dan menyiapkan FFmpeg di folder `ffmpeg_support/` saat pertama kali dijalankan.
-- macOS/Linux: unduhan otomatis FFmpeg tidak tersedia. Silakan instal FFmpeg secara manual dan pastikan perintah `ffmpeg` serta `ffprobe` ada di `PATH` (contoh: `brew install ffmpeg` di macOS atau `sudo apt install ffmpeg` di Ubuntu).
+FFmpeg notes:
+- Windows: the app automatically downloads and sets up FFmpeg into `ffmpeg_support/` on first run.
+- macOS/Linux: automatic FFmpeg download is not available. Please install FFmpeg manually and ensure `ffmpeg` and `ffprobe` are in your `PATH` (e.g., `brew install ffmpeg` on macOS or `sudo apt install ffmpeg` on Ubuntu).
 
-## Struktur Proyek (ringkas)
-- `main.py` — kode utama aplikasi GUI.
-- `run.bat` — skrip bantu untuk membuat venv, instal dependensi, dan menjalankan app.
-- `requirements.txt` — daftar dependensi Python.
-- `py_downloader/` — lokasi hasil unduhan (audio/video).
-- `ffmpeg_support/` — lokasi FFmpeg (Windows, otomatis).
-- `.venv/` — virtual environment lokal (diabaikan Git).
+## Project Structure (short)
+- `main.py` — main GUI application code.
+- `run.bat` — helper script to create venv, install dependencies, and run the app.
+- `requirements.txt` — Python dependencies.
+- `py_downloader/` — download outputs (audio/video).
+- `ffmpeg_support/` — FFmpeg location (Windows, automatic).
+- `.venv/` — local virtual environment (ignored by Git).
 
-## Inisialisasi Git & Push ke GitHub
+## Git Init & Push to GitHub
 
-Jika Anda belum menginisialisasi repo Git dan ingin mendorong ke GitHub:
+If you haven’t initialized Git yet and want to push to GitHub:
 
 ```bash
-# Inisialisasi repo lokal (gunakan main sebagai default branch)
+# Initialize a local repo (use main as default branch)
 git init
 git branch -M main
 
-# Tambahkan semua file (file besar output sudah di-ignore via .gitignore)
+# Add files (large outputs are ignored via .gitignore)
 git add .
 git commit -m "Initial commit"
 
-# Buat repo baru di GitHub terlebih dahulu (via web), lalu hubungkan:
+# Create a new GitHub repo (via web), then connect it:
 git remote add origin https://github.com/<username>/<repo>.git
 git push -u origin main
 ```
 
-Alternatif: Jika Anda memakai GitHub CLI (`gh`), Anda bisa membuat repo langsung:
+Alternative: If you use GitHub CLI (`gh`), you can create and push in one go:
 
 ```bash
 gh repo create <username>/<repo> --source . --public --push
 ```
 
 ## Troubleshooting
-- Python tidak ditemukan: pastikan `python --version` menampilkan versi >= 3.8.
-- Gagal instal dependensi: pastikan koneksi internet lancar, lalu jalankan kembali `run.bat`/perintah pip.
-- FFmpeg tidak tersedia (macOS/Linux): instal FFmpeg dan pastikan ada di `PATH`.
-- Unduhan gagal: coba ulangi, periksa URL, atau perbarui `yt-dlp` (`pip install -U yt-dlp`).
-
+- Python not found: ensure `python --version` shows >= 3.8.
+- Dependency install failed: check your internet connection, then rerun `run.bat`/pip commands.
+- FFmpeg missing (macOS/Linux): install FFmpeg and ensure it’s on `PATH`.
+- Download failed: retry, verify the URL, or update `yt-dlp` (`pip install -U yt-dlp`).
