@@ -86,7 +86,7 @@ def ensure_ffmpeg():
     return bin_dir
 
 
-class YouTubeDownloaderGUI:
+class StreamQApp:
     def __init__(self, master):
         self.master = master
         self.ffmpeg_dir = ensure_ffmpeg()
@@ -107,7 +107,7 @@ class YouTubeDownloaderGUI:
         self.update_quality_options()
 
     def _configure_window(self):
-        self.master.title("YouTube Downloader")
+        self.master.title("StreamQ")
         self.master.geometry("580x620")
         self.master.minsize(560, 600)
 
@@ -140,12 +140,12 @@ class YouTubeDownloaderGUI:
         container.columnconfigure(0, weight=1)
         container.rowconfigure(3, weight=1)
 
-        header = ttk.Label(container, text="YouTube Downloader", style="Header.TLabel")
+        header = ttk.Label(container, text="StreamQ", style="Header.TLabel")
         header.grid(row=0, column=0, sticky="w")
 
         subtitle = ttk.Label(
             container,
-            text="Download audio or video from YouTube with a familiar Windows look.",
+            text="Queue and download audio or video from YouTube with a familiar Windows look.",
             wraplength=520,
         )
         subtitle.grid(row=1, column=0, sticky="w", pady=(4, 16))
@@ -556,7 +556,7 @@ class YouTubeDownloaderGUI:
 if __name__ == "__main__":
     root = tk.Tk()
     try:
-        app = YouTubeDownloaderGUI(root)
+        app = StreamQApp(root)
     except Exception as error:
         messagebox.showerror("Error", str(error))
         root.destroy()

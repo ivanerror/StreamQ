@@ -1,6 +1,6 @@
-# YouTube Downloader (GUI)
+# StreamQ
 
-A simple desktop app to download video/audio from YouTube using `yt-dlp` with a Tkinter-based GUI. On Windows, the app automatically prepares FFmpeg so you can use it right away.
+StreamQ is a simple desktop app to queue and download video/audio from YouTube using `yt-dlp`, wrapped in a clean Tkinter-based GUI. On Windows, the app automatically prepares FFmpeg so you can use it right away.
 
 ## Prerequisites
 - Windows 10/11 recommended; macOS/Linux also supported (see notes below).
@@ -21,7 +21,7 @@ The easiest way is to use the included `run.bat` script:
    - Install dependencies from `requirements.txt`
    - Launch the GUI app (`python main.py`)
 
-When the app window opens, paste a YouTube URL, add it to the queue, then start downloading. By default, audio/video outputs are saved under `py_downloader/` (see the `audio` and `video` subfolders).
+When the StreamQ window opens, paste a YouTube URL, add it to the queue, then start downloading. By default, audio/video outputs are saved under `py_downloader/` (see the `audio` and `video` subfolders).
 
 ## Run Manually (Windows/macOS/Linux)
 
@@ -44,7 +44,7 @@ FFmpeg notes:
 - macOS/Linux: automatic FFmpeg download is not available. Please install FFmpeg manually and ensure `ffmpeg` and `ffprobe` are in your `PATH` (e.g., `brew install ffmpeg` on macOS or `sudo apt install ffmpeg` on Ubuntu).
 
 ## Project Structure (short)
-- `main.py` — main GUI application code.
+- `main.py` — main StreamQ GUI application code.
 - `run.bat` — helper script to create venv, install dependencies, and run the app.
 - `requirements.txt` — Python dependencies.
 - `py_downloader/` — download outputs (audio/video).
