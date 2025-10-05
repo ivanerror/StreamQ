@@ -1,3 +1,43 @@
+Metadata-Version: 2.4
+Name: streamq
+Version: 1.0.0
+Summary: Queue and download video/audio from YouTube using yt-dlp with a clean GUI
+Home-page: https://github.com/ivanerror/streamq
+Author: ivanerror
+Author-email: ivanerror <contact@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/ivanerror/streamq
+Project-URL: Repository, https://github.com/ivanerror/streamq.git
+Project-URL: Issues, https://github.com/ivanerror/streamq/issues
+Keywords: youtube,download,video,audio,yt-dlp,gui,tkinter
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: yt-dlp>=2024.8.6
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
 # StreamQ
 
 StreamQ is a modern desktop application for queuing and downloading video/audio from YouTube using `yt-dlp`, wrapped in a clean Tkinter-based GUI. The application follows Python best practices with a modular architecture for maintainability and extensibility.

@@ -1,0 +1,5 @@
+[console_scripts]
+streamq = streamq.__main__:main
+
+[gui_scripts]
+streamq-gui = streamq.__main__:main

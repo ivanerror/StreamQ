@@ -1,0 +1,17 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+include run.bat
+include main.py
+recursive-include src *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.pyd
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+prune .venv
+prune ffmpeg_support/bin
+prune py_downloader/audio
+prune py_downloader/video
