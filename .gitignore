@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.idea/
+.vscode/
+
+# Local data/output
+py_downloader/audio/
+py_downloader/video/
+
+# FFmpeg artifacts
+ffmpeg_support/bin/
+ffmpeg_support/ffmpeg_download.zip
+
+# Logs and temp
+*.log
+*.tmp
+*.part
+*.webm.part
+*.mp4.part
+*.mkv.part
+
