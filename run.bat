@@ -1,4 +1,7 @@
 @echo off
+REM StreamQ
+REM Copyright (c) 2025 ivanerror (https://github.com/ivanerror)
+REM All rights reserved.
 setlocal
 
 :: Pastikan perintah berjalan dari lokasi skrip

@@ -86,6 +86,9 @@ def ensure_ffmpeg():
     return bin_dir
 
 
+# StreamQ
+# Copyright (c) 2025 ivanerror (https://github.com/ivanerror)
+# All rights reserved.
 class StreamQApp:
     def __init__(self, master):
         self.master = master
