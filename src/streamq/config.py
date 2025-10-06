@@ -1,6 +1,7 @@
 """Configuration management for StreamQ."""
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -11,16 +12,16 @@ def get_project_root():
     Returns:
         str: Path to the project root directory
     """
-    # This will work whether we're running from the old structure or new structure
+    # Frozen (PyInstaller) build: store app data in user home
+    if getattr(sys, "frozen", False):
+        base = Path.home() / "StreamQ"
+        return str(base)
+
+    # Non-frozen: infer project root from file location
     current_file = Path(__file__).resolve()
-    
-    # From src/streamq/config.py, go up to project root
     if "src" in current_file.parts:
-        # New structure: src/streamq/config.py -> project root
         return str(current_file.parent.parent.parent)
-    else:
-        # Fallback: assume we're in the project root
-        return str(current_file.parent)
+    return str(current_file.parent)
 
 
 class Config:

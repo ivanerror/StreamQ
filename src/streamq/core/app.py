@@ -62,6 +62,13 @@ class StreamQApp:
         self.master.title(config.window_title)
         self.master.geometry(config.window_geometry)
         self.master.minsize(*config.window_min_size)
+        # Set window icon if available (Windows .ico)
+        try:
+            icon_path = os.path.join(config.project_root, "assets", "streamq.ico")
+            if os.name == "nt" and os.path.isfile(icon_path):
+                self.master.iconbitmap(icon_path)
+        except Exception:
+            pass
         
         # Configure theme and styling
         self.style = ttk.Style()

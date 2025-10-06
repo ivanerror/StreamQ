@@ -73,7 +73,18 @@ streamq
 
 # Or launch without console (GUI script on Windows)
 streamq-gui
+
+## Build Windows EXE
+
+Build a standalone Windows executable with PyInstaller:
+
+```bat
+scripts\build_exe.bat
 ```
+
+The output will be in `dist\StreamQ\StreamQ.exe`.
+
+CI build: tagging a commit with `v*` triggers GitHub Actions workflow to build and upload the Windows artifact automatically.
 
 ## Usage
 
@@ -189,4 +200,3 @@ MIT License. See `LICENSE` for details.
 ---
 
 StreamQ — Simple, reliable YouTube downloading with a modern Python architecture.
-
