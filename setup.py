@@ -23,7 +23,7 @@ def read_requirements():
     if os.path.exists(req_path):
         with open(req_path, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip() and not line.startswith("#")]
-    return ["yt-dlp>=2024.8.6"]
+    return ["yt-dlp>=2025.09.26"]
 
 setup(
     name="streamq",

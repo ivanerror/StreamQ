@@ -25,7 +25,11 @@ Classifier: Topic :: Internet :: WWW/HTTP
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: yt-dlp>=2024.8.6
+Requires-Dist: yt-dlp>=2025.09.26
+Requires-Dist: brotli
+Requires-Dist: mutagen
+Requires-Dist: pycryptodomex
+Requires-Dist: websockets
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov; extra == "dev"

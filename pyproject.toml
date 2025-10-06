@@ -28,7 +28,11 @@ classifiers = [
 ]
 keywords = ["youtube", "download", "video", "audio", "yt-dlp", "gui", "tkinter"]
 dependencies = [
-    "yt-dlp>=2024.8.6",
+    "yt-dlp>=2025.09.26",
+    "brotli",
+    "mutagen",
+    "pycryptodomex",
+    "websockets",
 ]
 
 [project.urls]

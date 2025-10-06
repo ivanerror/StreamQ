@@ -1,4 +1,8 @@
-yt-dlp>=2024.8.6
+yt-dlp>=2025.09.26
+brotli
+mutagen
+pycryptodomex
+websockets
 
 [dev]
 pytest>=7.0
