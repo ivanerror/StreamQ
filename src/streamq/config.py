@@ -41,11 +41,13 @@ class Config:
         
         # UI settings
         self.window_title = "StreamQ"
-        self.window_geometry = "580x620"
-        self.window_min_size = (560, 600)
+        self.window_geometry = "900x760"
+        self.window_min_size = (800, 700)
         
         # Styling
         self.preferred_themes = ("vista", "xpnative", "clam")
+        # ttkbootstrap theme name (used when ttkbootstrap is available)
+        self.bootstrap_theme = "flatly"
         self.default_font_family = "Segoe UI"
         self.default_font_size = 10
         

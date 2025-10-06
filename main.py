@@ -3,6 +3,10 @@
 import sys
 import tkinter as tk
 from tkinter import messagebox
+try:
+    import ttkbootstrap as tb
+except Exception:
+    tb = None
 
 try:
     # Try to import from the new structure first
@@ -22,7 +26,7 @@ except ImportError:
 
 def main():
     """Main entry point for StreamQ application."""
-    root = tk.Tk()
+    root = tb.Window(themename="flatly") if tb else tk.Tk()
     try:
         app = StreamQApp(root)
         root.mainloop()

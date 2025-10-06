@@ -33,6 +33,7 @@ dependencies = [
     "mutagen",
     "pycryptodomex",
     "websockets",
+    "ttkbootstrap>=1.10.1",
 ]
 
 [project.urls]

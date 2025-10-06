@@ -30,6 +30,7 @@ Requires-Dist: brotli
 Requires-Dist: mutagen
 Requires-Dist: pycryptodomex
 Requires-Dist: websockets
+Requires-Dist: ttkbootstrap>=1.10.1
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov; extra == "dev"

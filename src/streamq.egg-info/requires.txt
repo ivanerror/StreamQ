@@ -3,6 +3,7 @@ brotli
 mutagen
 pycryptodomex
 websockets
+ttkbootstrap>=1.10.1
 
 [dev]
 pytest>=7.0

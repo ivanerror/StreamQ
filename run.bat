@@ -2,12 +2,23 @@
 REM StreamQ - Enhanced launch script with support for new project structure
 REM Copyright (c) 2025 ivanerror (https://github.com/ivanerror)
 REM All rights reserved.
-setlocal
+setlocal ENABLEDELAYEDEXPANSION
 
-echo ========================================
-echo           StreamQ Launcher
-echo ========================================
-echo.
+REM Parse arguments
+set "GUI_MODE=1"
+set "FORCE_UPDATE="
+for %%A in (%*) do (
+  if /I "%%~A"=="--console" set "GUI_MODE="
+  if /I "%%~A"=="/console" set "GUI_MODE="
+  if /I "%%~A"=="--update" set "FORCE_UPDATE=1"
+)
+
+if not defined GUI_MODE (
+  echo ========================================
+  echo           StreamQ Launcher
+  echo ========================================
+  echo.
+)
 
 :: Ensure we're running from the script's directory
 pushd "%~dp0" >nul 2>&1
@@ -19,7 +30,7 @@ if errorlevel 1 (
 
 :: Find Python interpreter
 set "PYTHON_CMD="
-echo [1/5] Looking for Python interpreter...
+if not defined GUI_MODE echo [1/5] Looking for Python interpreter...
 
 :: Try python command first
 where python >nul 2>&1
@@ -27,7 +38,7 @@ if not errorlevel 1 (
     python --version 2>&1 | findstr /C:"Python 3" >nul
     if not errorlevel 1 (
         set "PYTHON_CMD=python"
-        echo       Found: python
+        if not defined GUI_MODE echo       Found: python
     )
 )
 
@@ -36,7 +47,7 @@ if not defined PYTHON_CMD (
     py -3 --version >nul 2>&1
     if not errorlevel 1 (
         set "PYTHON_CMD=py -3"
-        echo       Found: py -3 launcher
+        if not defined GUI_MODE echo       Found: py -3 launcher
     )
 )
 
@@ -62,10 +73,10 @@ if errorlevel 1 (
 
 :: Setup virtual environment
 set "VENV_DIR=.venv"
-echo [2/5] Setting up virtual environment...
+if not defined GUI_MODE echo [2/5] Setting up virtual environment...
 
 if not exist "%VENV_DIR%\Scripts\python.exe" (
-    echo       Creating virtual environment...
+    if not defined GUI_MODE echo       Creating virtual environment...
     %PYTHON_CMD% -m venv "%VENV_DIR%"
     if errorlevel 1 (
         echo       ERROR: Failed to create virtual environment.
@@ -73,13 +84,13 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
         pause
         exit /b 1
     )
-    echo       Virtual environment created successfully.
+    if not defined GUI_MODE echo       Virtual environment created successfully.
 ) else (
-    echo       Virtual environment already exists.
+    if not defined GUI_MODE echo       Virtual environment already exists.
 )
 
 :: Activate virtual environment
-echo [3/5] Activating virtual environment...
+if not defined GUI_MODE echo [3/5] Activating virtual environment...
 call "%VENV_DIR%\Scripts\activate.bat"
 if errorlevel 1 (
     echo       ERROR: Failed to activate virtual environment.
@@ -87,61 +98,100 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-echo       Virtual environment activated.
+if not defined GUI_MODE echo       Virtual environment activated.
 
 :: Install/update dependencies
-echo [4/5] Installing dependencies...
+if not defined GUI_MODE echo [4/5] Installing dependencies...
 set "REQUIREMENTS_FILE=requirements.txt"
+set "REQ_HASH_FILE=%VENV_DIR%\.req.sha256"
 if exist "%REQUIREMENTS_FILE%" (
-    echo       Upgrading pip...
-    python -m pip install --upgrade pip --quiet
-    if errorlevel 1 (
-        echo       WARNING: Failed to upgrade pip.
-    )
-    
-    echo       Installing packages from %REQUIREMENTS_FILE%...
-    python -m pip install -r "%REQUIREMENTS_FILE%" --quiet
-    if errorlevel 1 (
-        echo       ERROR: Failed to install dependencies.
-        echo       Try running: pip install -r "%REQUIREMENTS_FILE%" manually
-        popd
-        pause
-        exit /b 1
-    )
-    echo       Dependencies installed successfully.
-) else (
-    echo       WARNING: %REQUIREMENTS_FILE% not found, skipping dependency installation.
-)
-
-:: Install package in development mode if possible
-if exist "pyproject.toml" (
-    echo       Installing StreamQ in development mode...
-    python -m pip install -e . --quiet 2>nul
-    if not errorlevel 1 (
-        echo       Development installation completed.
+    set "NEED_INSTALL="
+    if defined FORCE_UPDATE (
+        set "NEED_INSTALL=1"
     ) else (
-        echo       Note: Development mode installation failed, using fallback mode.
+        rem Compute current requirements hash (SHA256)
+        set "CUR_HASH="
+        for /f "tokens=* delims=" %%H in ('certutil -hashfile "%REQUIREMENTS_FILE%" SHA256 ^| findstr /R "^[0-9A-F]"') do (
+            if not defined CUR_HASH set "CUR_HASH=%%H"
+        )
+        if defined CUR_HASH set "CUR_HASH=!CUR_HASH: =!"
+        set "OLD_HASH="
+        if exist "%REQ_HASH_FILE%" (
+            set /p OLD_HASH=<"%REQ_HASH_FILE%"
+        )
+        if not defined CUR_HASH (
+            set "NEED_INSTALL=1"
+        ) else if not defined OLD_HASH (
+            set "NEED_INSTALL=1"
+        ) else if /I not "!CUR_HASH!"=="!OLD_HASH!" (
+            set "NEED_INSTALL=1"
+        )
     )
+
+    if defined NEED_INSTALL (
+        if not defined GUI_MODE echo       Upgrading pip...
+        python -m pip install --upgrade pip --quiet
+        if errorlevel 1 (
+            if not defined GUI_MODE echo       WARNING: Failed to upgrade pip.
+        )
+        if not defined GUI_MODE echo       Installing packages from %REQUIREMENTS_FILE%...
+        python -m pip install -r "%REQUIREMENTS_FILE%" --quiet
+        if errorlevel 1 (
+            echo       ERROR: Failed to install dependencies.
+            echo       Try running: pip install -r "%REQUIREMENTS_FILE%" manually
+            popd
+            if not defined GUI_MODE pause
+            exit /b 1
+        )
+        if defined CUR_HASH (
+            > "%REQ_HASH_FILE%" echo(!CUR_HASH!
+        )
+        if not defined GUI_MODE echo       Dependencies installed/updated.
+
+        rem Optional: install package in development mode after deps update
+        if exist "pyproject.toml" (
+            if not defined GUI_MODE echo       Installing StreamQ in development mode...
+            python -m pip install -e . --quiet 2>nul
+            if not errorlevel 1 (
+                if not defined GUI_MODE echo       Development installation completed.
+            ) else (
+                if not defined GUI_MODE echo       Note: Development mode installation failed, using fallback mode.
+            )
+        )
+    ) else (
+        if not defined GUI_MODE echo       Dependencies up-to-date. Skipping installation.
+    )
+) else (
+    if not defined GUI_MODE echo       WARNING: %REQUIREMENTS_FILE% not found, skipping dependency installation.
 )
 
 :: Launch the application
-echo [5/5] Launching StreamQ...
-echo.
+if not defined GUI_MODE (
+  echo [5/5] Launching StreamQ...
+  echo.
+  echo Starting StreamQ GUI...
+)
 
-:: Try multiple launch methods in order of preference
-echo Starting StreamQ GUI...
+REM Choose interpreter for GUI launch
+set "PYW=%VENV_DIR%\Scripts\pythonw.exe"
+if not exist "%PYW%" set "PYW=pythonw"
 
-:: Method 1: Try installed package entry point
-python -m streamq 2>nul
-if not errorlevel 1 goto :success
-
-:: Method 2: Try new module structure
-python -m src.streamq 2>nul  
-if not errorlevel 1 goto :success
-
-:: Method 3: Fallback to main.py
-python main.py
-if not errorlevel 1 goto :success
+REM Try multiple launch methods in order of preference
+if defined GUI_MODE (
+  start "" "%PYW%" -m streamq
+  if not errorlevel 1 goto :success
+  start "" "%PYW%" -m src.streamq
+  if not errorlevel 1 goto :success
+  start "" "%PYW%" main.py
+  if not errorlevel 1 goto :success
+) else (
+  python -m streamq 2>nul
+  if not errorlevel 1 goto :success
+  python -m src.streamq 2>nul
+  if not errorlevel 1 goto :success
+  python main.py
+  if not errorlevel 1 goto :success
+)
 
 :: If all methods fail
 echo ERROR: Failed to start StreamQ application.
@@ -155,18 +205,19 @@ set "EXIT_CODE=0"
 :cleanup
 popd
 
-if not "%EXIT_CODE%"=="0" (
-    echo.
-    echo ========================================
-    echo Program exited with error code %EXIT_CODE%
-    echo ========================================
-) else (
-    echo.
-    echo ========================================
-    echo       StreamQ session completed
-    echo ========================================
+if not defined GUI_MODE (
+  if not "%EXIT_CODE%"=="0" (
+      echo.
+      echo ========================================
+      echo Program exited with error code %EXIT_CODE%
+      echo ========================================
+  ) else (
+      echo.
+      echo ========================================
+      echo       StreamQ session completed
+      echo ========================================
+  )
+  echo Press any key to exit...
+  pause >nul
 )
-
-echo Press any key to exit...
-pause >nul
 exit /b %EXIT_CODE%

@@ -3,13 +3,18 @@
 import sys
 import tkinter as tk
 from tkinter import messagebox
+try:
+    import ttkbootstrap as tb
+except Exception:
+    tb = None
 
 from .core.app import StreamQApp
 
 
 def main():
     """Main entry point for StreamQ application."""
-    root = tk.Tk()
+    # Prefer ttkbootstrap window if available
+    root = tb.Window(themename="flatly") if tb else tk.Tk()
     try:
         app = StreamQApp(root)
         root.mainloop()

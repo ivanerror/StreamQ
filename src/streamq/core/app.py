@@ -66,12 +66,14 @@ class StreamQApp:
         # Configure theme and styling
         self.style = ttk.Style()
         current_theme = self.style.theme_use()
-        for theme in config.preferred_themes:
-            if theme in self.style.theme_names():
-                self.style.theme_use(theme)
-                break
-        else:
-            self.style.theme_use(current_theme)
+        # If ttkbootstrap is in use, keep the bootstrap theme selected by the Window
+        if "ttkbootstrap" not in sys.modules:
+            for theme in config.preferred_themes:
+                if theme in self.style.theme_names():
+                    self.style.theme_use(theme)
+                    break
+            else:
+                self.style.theme_use(current_theme)
         
         # Configure fonts
         default_font = tkfont.nametofont("TkDefaultFont")
@@ -79,10 +81,11 @@ class StreamQApp:
         self.master.option_add("*Font", default_font)
         
         # Set background color
-        background = self.style.lookup("TFrame", "background")
-        if not background:
-            background = "#f3f3f3"
-        self.master.configure(background=background)
+        if "ttkbootstrap" not in sys.modules:
+            background = self.style.lookup("TFrame", "background")
+            if not background:
+                background = "#f3f3f3"
+            self.master.configure(background=background)
         
         # Configure custom styles
         self.style.configure("Header.TLabel", font=(config.default_font_family + " Semibold", 16))
@@ -92,7 +95,7 @@ class StreamQApp:
     
     def _build_layout(self):
         """Build the main application layout."""
-        container = ttk.Frame(self.master, padding=(20, 20, 20, 20))
+        container = ttk.Frame(self.master, padding=(16, 16, 16, 16))
         container.pack(fill="both", expand=True)
         container.columnconfigure(0, weight=1)
         container.rowconfigure(3, weight=1)
@@ -125,25 +128,42 @@ class StreamQApp:
         
         subtitle = ttk.Label(
             container,
-            text="Queue and download audio or video from YouTube with a familiar Windows look.",
+            text="Queue and download audio or video from YouTube.",
             wraplength=520,
         )
         subtitle.grid(row=1, column=0, sticky="w", pady=(4, 16))
     
     def _build_url_section(self, container):
         """Build the URL input section."""
-        url_section = ttk.LabelFrame(container, text="Source", style="Section.TLabelframe")
-        url_section.grid(row=2, column=0, sticky="ew", pady=(0, 16))
+        url_section = ttk.LabelFrame(
+            container,
+            text="Source",
+            style="Section.TLabelframe",
+            padding=(12, 12, 12, 12),
+        )
+        url_section.grid(row=2, column=0, sticky="ew", pady=(8, 16))
         url_section.columnconfigure(0, weight=1)
-        
+        url_section.columnconfigure(1, weight=0)
+
         self.url_entry = ttk.Entry(url_section)
-        self.url_entry.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        self.add_button = ttk.Button(url_section, text="Add to Queue", command=self._add_to_queue)
-        self.add_button.grid(row=0, column=1, padx=(10, 0))
+        # Use matching vertical padding so button aligns with entry baseline
+        self.url_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
+        self.add_button = ttk.Button(
+            url_section,
+            text="Add to Queue",
+            command=self._add_to_queue,
+            style="info.TButton",
+        )
+        self.add_button.grid(row=0, column=1, sticky="w", padx=(0, 0), pady=(0, 8))
     
     def _build_queue_section(self, container):
         """Build the download queue display section."""
-        queue_section = ttk.LabelFrame(container, text="Download Queue", style="Section.TLabelframe")
+        queue_section = ttk.LabelFrame(
+            container,
+            text="Download Queue",
+            style="Section.TLabelframe",
+            padding=(12, 12, 12, 12),
+        )
         queue_section.grid(row=3, column=0, sticky="nsew", pady=(0, 16))
         queue_section.columnconfigure(0, weight=1)
         queue_section.rowconfigure(0, weight=1)
@@ -154,14 +174,14 @@ class StreamQApp:
             columns=("status", "url", "title"),
             show="headings",
             selectmode="browse",
-            height=8,
+            height=14,
         )
         self.queue_display.heading("status", text="Status")
         self.queue_display.heading("url", text="Link")
         self.queue_display.heading("title", text="Title")
         self.queue_display.column("status", anchor="center", width=120, stretch=False)
-        self.queue_display.column("url", anchor="w", width=360, stretch=True)
-        self.queue_display.column("title", anchor="w", width=360, stretch=True)
+        self.queue_display.column("url", anchor="w", width=420, stretch=True)
+        self.queue_display.column("title", anchor="w", width=420, stretch=True)
         
         queue_scroll = ttk.Scrollbar(queue_section, orient="vertical", command=self.queue_display.yview)
         self.queue_display.configure(yscrollcommand=queue_scroll.set)
@@ -181,7 +201,12 @@ class StreamQApp:
     
     def _build_format_section(self, container):
         """Build the format and quality selection section."""
-        format_section = ttk.LabelFrame(container, text="Output Preferences", style="Section.TLabelframe")
+        format_section = ttk.LabelFrame(
+            container,
+            text="Output Preferences",
+            style="Section.TLabelframe",
+            padding=(12, 12, 12, 12),
+        )
         format_section.grid(row=4, column=0, sticky="ew", pady=(0, 16))
         format_section.columnconfigure(1, weight=1)
         
@@ -193,7 +218,7 @@ class StreamQApp:
             value="audio",
             command=self._update_quality_options,
         )
-        self.format_radio_audio.grid(row=0, column=0, sticky="w")
+        self.format_radio_audio.grid(row=0, column=0, sticky="w", padx=(0, 12), pady=(0, 8))
         
         self.format_radio_video = ttk.Radiobutton(
             format_section,
@@ -202,38 +227,43 @@ class StreamQApp:
             value="video", 
             command=self._update_quality_options,
         )
-        self.format_radio_video.grid(row=0, column=1, sticky="w")
+        self.format_radio_video.grid(row=0, column=1, sticky="w", pady=(0, 8))
         
         # Quality selection
         quality_label = ttk.Label(format_section, text="Quality")
-        quality_label.grid(row=1, column=0, sticky="w", pady=(12, 0))
+        quality_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
         
         self.quality_dropdown = ttk.Combobox(format_section, textvariable=self.quality_var, state="readonly", width=12)
-        self.quality_dropdown.grid(row=1, column=1, sticky="w", pady=(12, 0))
+        self.quality_dropdown.grid(row=1, column=1, sticky="w", pady=(8, 0))
     
     def _build_progress_section(self, container):
         """Build the progress display section."""
-        progress_section = ttk.LabelFrame(container, text="Status", style="Section.TLabelframe")
-        progress_section.grid(row=5, column=0, sticky="ew")
+        progress_section = ttk.LabelFrame(
+            container,
+            text="Status",
+            style="Section.TLabelframe",
+            padding=(12, 12, 12, 12),
+        )
+        progress_section.grid(row=5, column=0, sticky="ew", pady=(0, 16))
         progress_section.columnconfigure(0, weight=1)
         
         self.progress_bar = ttk.Progressbar(progress_section, variable=self.progress_var, maximum=100)
-        self.progress_bar.grid(row=0, column=0, sticky="ew")
+        self.progress_bar.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         
         self.status_label = ttk.Label(progress_section, textvariable=self.status_var)
-        self.status_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        self.status_label.grid(row=1, column=0, sticky="w")
     
     def _build_actions_section(self, container):
         """Build the action buttons section."""
-        actions_frame = ttk.Frame(container)
-        actions_frame.grid(row=6, column=0, sticky="ew", pady=(20, 0))
+        actions_frame = ttk.Frame(container, padding=(12, 8, 12, 8))
+        actions_frame.grid(row=6, column=0, sticky="ew", pady=(0, 8))
         actions_frame.columnconfigure(0, weight=1)
         
         self.download_button = ttk.Button(
             actions_frame,
             text="Start Download",
             command=self._start_download,
-            style="Accent.TButton",
+            style="primary.TButton",
         )
         self.download_button.grid(row=0, column=0, sticky="e")
     

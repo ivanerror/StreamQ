@@ -1,44 +1,45 @@
 # StreamQ
 
-StreamQ is a modern desktop application for queuing and downloading video/audio from YouTube using `yt-dlp`, wrapped in a clean Tkinter-based GUI. The application follows Python best practices with a modular architecture for maintainability and extensibility.
+StreamQ is a modern desktop application for queuing and downloading video/audio from YouTube using `yt-dlp`, wrapped in a clean Tkinter-based GUI. The application follows Python best practices with a modular architecture for maintainability and extensibility. The UI uses ttkbootstrap for a polished, modern look.
 
 ## Features
 
-- ✨ Clean, modern GUI interface
-- 📥 Queue multiple YouTube downloads
-- 🎵 Audio downloads (MP3 format)
-- 🎬 Video downloads (MP4 format) 
-- ⚡ Automatic FFmpeg setup on Windows
-- 📊 Real-time download progress tracking
-- 🔄 Background title fetching
-- 📁 Auto-open download folder on completion
+- Modern GUI with ttkbootstrap (Bootstrap-like themes)
+- Queue multiple YouTube downloads
+- Audio downloads (MP3) and Video downloads (MP4)
+- Automatic FFmpeg setup on Windows
+- Real-time progress (percentage + speed; ETA hidden for cleaner status)
+- Background title fetching for queued items
+- Single queue table view: columns Status | Link | Title
+- Auto-open download folder on completion
+- Windows launcher opens without console by default
 
 ## Prerequisites
 
-- **Python 3.8+** installed on your system
-- **Windows 10/11** recommended; macOS/Linux also supported
-- **Internet connection** (for dependencies and FFmpeg download)
-- **Git** (optional, for development)
+- Python 3.8+ installed
+- Windows 10/11 recommended; macOS/Linux supported
+- Internet connection (for dependencies and FFmpeg download)
 
 ## Quick Start
 
-### Option 1: Using the Convenience Script (Windows)
+### Option 1: Windows Convenience Script
 
-The easiest way to get started:
+The easiest way to start on Windows:
 
-1. Double-click [`run.bat`](run.bat) from File Explorer, or run it from terminal:
+1. Double-click `run.bat` from File Explorer (opens GUI without console), or run in a terminal:
    ```bat
    run.bat
    ```
-
 2. The script automatically:
    - Creates a virtual environment at `.venv/`
-   - Installs all dependencies from [`requirements.txt`](requirements.txt)
-   - Launches the StreamQ GUI application
+   - Installs dependencies from `requirements.txt` only when it changes (cached via SHA-256)
+   - Launches the StreamQ GUI using `pythonw` (no console window)
 
-### Option 2: Manual Installation
+Flags:
+- `--console` run with a terminal window and logs
+- `--update` force re-install dependencies (refresh the cache)
 
-For more control or non-Windows platforms:
+### Option 2: Manual Installation (All Platforms)
 
 ```bash
 # Create and activate virtual environment
@@ -58,9 +59,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### Option 3: Install as Python Package
-
-Install StreamQ as a proper Python package:
+### Option 3: Install as a Package
 
 ```bash
 # Install in development mode
@@ -69,71 +68,79 @@ pip install -e .
 # Or install from source
 pip install .
 
-# Run from anywhere
+# Run from anywhere (console)
 streamq
+
+# Or launch without console (GUI script on Windows)
+streamq-gui
 ```
-
-## Project Structure
-
-StreamQ follows modern Python packaging best practices with a clean, modular architecture:
-
-```
-streamq/
-├── src/streamq/                 # Main package source
-│   ├── __init__.py             # Package initialization
-│   ├── __main__.py             # Entry point for module execution
-│   ├── config.py               # Configuration management
-│   ├── core/                   # Core application modules
-│   │   ├── __init__.py
-│   │   ├── app.py              # Main GUI application
-│   │   └── downloader.py       # Download logic & queue management
-│   └── utils/                  # Utility modules
-│       ├── __init__.py
-│       └── ffmpeg.py           # FFmpeg handling utilities
-├── main.py                     # Standalone entry point script
-├── pyproject.toml              # Modern Python packaging configuration
-├── setup.py                    # Fallback setup script
-├── requirements.txt            # Python dependencies
-├── run.bat                     # Windows convenience script
-├── .gitignore                  # Git ignore patterns
-├── LICENSE                     # MIT License
-├── MANIFEST.in                 # Package manifest
-└── README.md                   # This file
-```
-
-### Key Architectural Improvements
-
-- **Separation of Concerns**: GUI, download logic, and utilities are cleanly separated
-- **Configuration Management**: Centralized configuration system
-- **Modular Design**: Easy to extend and maintain
-- **Package Structure**: Follows Python packaging best practices
-- **Entry Points**: Multiple ways to run the application
-- **Type Safety**: Structured for future type annotation support
 
 ## Usage
 
-1. **Launch StreamQ**: Use any of the installation methods above
-2. **Add URLs**: Paste YouTube URLs and click "Add to Queue"
-3. **Choose Format**: Select Audio (MP3) or Video (MP4)
-4. **Select Quality**: Pick your preferred quality setting
-5. **Download**: Click "Start Download" to process the queue
+1. Launch StreamQ
+2. Paste a YouTube URL and click “Add to Queue”
+3. Choose Audio (MP3) or Video (MP4)
+4. Select quality
+5. Click “Start Download”
+
+Queue display (single table):
+- `Status`: Pending / Downloading / Completed / Failed
+- `Link`: The original URL you added
+- `Title`: Fetched automatically in the background
 
 ### Output Locations
 
-- **Audio files**: [`py_downloader/audio/`](py_downloader/audio/)
-- **Video files**: [`py_downloader/video/`](py_downloader/video/)
-- **FFmpeg binaries**: [`ffmpeg_support/`](ffmpeg_support/) (Windows only)
+- Audio files: `py_downloader/audio/`
+- Video files: `py_downloader/video/`
+- FFmpeg binaries (Windows): `ffmpeg_support/`
+
+## Project Structure
+
+```
+src/
+  streamq/
+    __init__.py
+    __main__.py        # Module entry point
+    config.py          # Configuration management
+    utils/
+      __init__.py
+      ffmpeg.py        # FFmpeg handling utilities
+    core/
+      __init__.py
+      app.py           # Main GUI application
+      downloader.py    # Download logic & queue management
+
+main.py               # Standalone entry point script
+pyproject.toml        # Packaging configuration
+setup.py              # Legacy/fallback setup
+requirements.txt      # Python dependencies
+run.bat               # Windows launcher
+run.sh                # Linux/macOS helper
+LICENSE
+README.md
+```
+
+## Platform Notes
+
+### Windows
+- FFmpeg is automatically downloaded and configured on first run
+- ttkbootstrap theme enabled by default (changeable in `main.py` or `src/streamq/__main__.py`)
+- `run.bat` launches without console by default; use `--console` for logs
+
+### macOS/Linux
+- Install FFmpeg manually:
+  - macOS: `brew install ffmpeg`
+  - Ubuntu/Debian: `sudo apt install ffmpeg`
+- Ensure `ffmpeg` and `ffprobe` are available in `PATH`
 
 ## Development
-
-### Setting up Development Environment
 
 ```bash
 # Clone the repository
 git clone https://github.com/ivanerror/streamq.git
 cd streamq
 
-# Install in development mode with optional dependencies
+# Install in development mode with optional dev tools
 pip install -e .[dev]
 
 # Or manually install dev dependencies
@@ -143,123 +150,43 @@ pip install pytest black isort flake8 mypy
 ### Running Tests
 
 ```bash
-# Run tests
 pytest
-
-# Run with coverage
 pytest --cov=streamq
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
 black src/
-
-# Sort imports
 isort src/
-
-# Lint code
 flake8 src/
-
-# Type checking
 mypy src/
-```
-
-## Platform-Specific Notes
-
-### Windows
-- FFmpeg is automatically downloaded and configured on first run
-- Uses native Windows styling themes when available
-
-### macOS/Linux
-- **Manual FFmpeg installation required**:
-  - macOS: `brew install ffmpeg`
-  - Ubuntu/Debian: `sudo apt install ffmpeg`
-  - Ensure `ffmpeg` and `ffprobe` are in your system `PATH`
-
-## Git Repository Setup
-
-If you haven't initialized Git yet and want to push to GitHub:
-
-```bash
-# Initialize repository
-git init
-git branch -M main
-
-# Add files (download outputs are automatically ignored)
-git add .
-git commit -m "Initial commit with improved project structure"
-
-# Connect to GitHub repository
-git remote add origin https://github.com/<username>/<repo>.git
-git push -u origin main
-```
-
-Or using GitHub CLI:
-
-```bash
-gh repo create <username>/<repo> --source . --public --push
 ```
 
 ## Troubleshooting
 
-### Common Issues
-
-**Python not found**
-```bash
-python --version  # Should show Python 3.8+
-```
+**No GUI or errors at startup**
+- Ensure you are using Python 3.8+
+- Activate the virtual environment
+- Use `run.bat --console` to see logs
 
 **Dependency installation failed**
 - Check internet connection
-- Try: `python -m pip install --upgrade pip`
-- Rerun installation
+- `python -m pip install --upgrade pip`
+- `run.bat --update`
 
 **FFmpeg missing (macOS/Linux)**
-- Install FFmpeg: `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Ubuntu)
-- Ensure FFmpeg is in PATH: `ffmpeg -version`
+- Install FFmpeg and ensure it is in `PATH`
 
 **Download failed**
-- Verify the YouTube URL is valid
+- Verify YouTube URL
 - Update yt-dlp: `pip install -U yt-dlp`
-- Check internet connection
-
-**Import errors**
-- Ensure virtual environment is activated
-- Reinstall: `pip install -e .`
-
-### Getting Help
-
-1. Check the [Issues](https://github.com/ivanerror/streamq/issues) page
-2. Create a new issue with:
-   - Your operating system
-   - Python version (`python --version`)
-   - Error message or description
-   - Steps to reproduce
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the code style (run `black` and `isort`)
-4. Add tests if applicable
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - The excellent YouTube downloader library
-- [FFmpeg](https://ffmpeg.org/) - For media processing capabilities
-- The Python community for excellent packaging tools and practices
+MIT License. See `LICENSE` for details.
 
 ---
 
-**StreamQ** - Simple, reliable YouTube downloading with a modern Python architecture.
+StreamQ — Simple, reliable YouTube downloading with a modern Python architecture.
+
