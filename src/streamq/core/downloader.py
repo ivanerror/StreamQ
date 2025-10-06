@@ -104,12 +104,9 @@ class DownloadManager:
         if status == "downloading":
             percent_value, percent_text = self._extract_percent(data)
             speed_text = data.get("_speed_str") or ""
-            eta_text = data.get("_eta_str") or ""
             message_parts = [f"Downloading {index}/{total}", percent_text]
             if speed_text:
                 message_parts.append(speed_text)
-            if eta_text:
-                message_parts.append(f"ETA {eta_text}")
             message = " | ".join(part for part in message_parts if part)
             self.progress_callback(percent_value, message)
         elif status == "finished":
@@ -147,7 +144,7 @@ class DownloadQueue:
             download_manager (DownloadManager): The download manager instance
         """
         self.download_manager = download_manager
-        self.queue = []  # list of dicts: url, item_id, listbox_index, display_index, status, title
+        self.queue = []  # list of dicts: url, item_id, status, title
         self.is_downloading = False
         self.status_callback = None
         self.completion_callback = None
@@ -160,15 +157,13 @@ class DownloadQueue:
         """Set the completion callback function."""
         self.completion_callback = callback
     
-    def add_to_queue(self, url, item_id, listbox_index, display_index):
+    def add_to_queue(self, url, item_id):
         """
         Add a URL to the download queue.
         
         Args:
             url (str): YouTube video URL
             item_id: Treeview item ID
-            listbox_index (int): Index in the listbox
-            display_index (int): Display index for numbering
             
         Returns:
             dict: The created queue entry
@@ -176,8 +171,6 @@ class DownloadQueue:
         entry = {
             "url": url,
             "item_id": item_id,
-            "listbox_index": listbox_index,
-            "display_index": display_index,
             "status": "Pending",
             "title": None,
         }

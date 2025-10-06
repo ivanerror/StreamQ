@@ -147,20 +147,21 @@ class StreamQApp:
         queue_section.grid(row=3, column=0, sticky="nsew", pady=(0, 16))
         queue_section.columnconfigure(0, weight=1)
         queue_section.rowconfigure(0, weight=1)
-        queue_section.rowconfigure(1, weight=0)
         
         # Main queue treeview
         self.queue_display = ttk.Treeview(
             queue_section,
-            columns=("status", "url"),
+            columns=("status", "url", "title"),
             show="headings",
             selectmode="browse",
             height=8,
         )
         self.queue_display.heading("status", text="Status")
-        self.queue_display.heading("url", text="URL")
+        self.queue_display.heading("url", text="Link")
+        self.queue_display.heading("title", text="Title")
         self.queue_display.column("status", anchor="center", width=120, stretch=False)
-        self.queue_display.column("url", anchor="w", width=420, stretch=True)
+        self.queue_display.column("url", anchor="w", width=360, stretch=True)
+        self.queue_display.column("title", anchor="w", width=360, stretch=True)
         
         queue_scroll = ttk.Scrollbar(queue_section, orient="vertical", command=self.queue_display.yview)
         self.queue_display.configure(yscrollcommand=queue_scroll.set)
@@ -177,29 +178,6 @@ class StreamQApp:
         for tag, color in tag_colors.items():
             self.queue_display.tag_configure(tag, foreground=color)
         
-        # Summary listbox
-        self._build_summary_section(queue_section)
-    
-    def _build_summary_section(self, parent):
-        """Build the queue summary listbox section."""
-        summary_frame = ttk.Frame(parent)
-        summary_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(12, 0))
-        summary_frame.columnconfigure(0, weight=1)
-        
-        summary_header = ttk.Label(summary_frame, text="Queued URLs (review before downloading):")
-        summary_header.grid(row=0, column=0, sticky="w")
-        
-        self.queue_listbox = tk.Listbox(
-            summary_frame,
-            height=5,
-            activestyle="none",
-            exportselection=False,
-            font=("Consolas", 9),
-        )
-        self.queue_listbox.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
-        summary_scroll = ttk.Scrollbar(summary_frame, orient="vertical", command=self.queue_listbox.yview)
-        self.queue_listbox.configure(yscrollcommand=summary_scroll.set)
-        summary_scroll.grid(row=1, column=1, sticky="ns", padx=(8, 0))
     
     def _build_format_section(self, container):
         """Build the format and quality selection section."""
@@ -279,14 +257,11 @@ class StreamQApp:
         item_id = self.queue_display.insert(
             "",
             "end", 
-            values=("Pending", url),
+            values=("Pending", url, "Fetching title..."),
             tags=(self.status_tags["Pending"],),
         )
-        listbox_index = self.queue_listbox.size()
-        display_index = listbox_index + 1
         
-        entry = self.download_queue.add_to_queue(url, item_id, listbox_index, display_index)
-        self.queue_listbox.insert(tk.END, self._format_queue_listbox_entry(entry))
+        entry = self.download_queue.add_to_queue(url, item_id)
         
         pending_total = self.download_queue.get_pending_count()
         self.status_var.set(f"Added to queue. Pending items: {pending_total}.")
@@ -354,34 +329,26 @@ class StreamQApp:
         """Update the status display for a queue entry."""
         status = entry["status"]
         item_id = entry["item_id"]
-        self.queue_display.item(item_id, values=(status, entry["url"]))
+        # Keep existing URL and Title when updating status
+        current_values = self.queue_display.item(item_id, "values") or ("", "", "")
+        url = entry.get("url") or (current_values[1] if len(current_values) > 1 else "")
+        title = entry.get("title") or (current_values[2] if len(current_values) > 2 else "")
+        self.queue_display.item(item_id, values=(status, url, title))
         tag = self.status_tags.get(status)
         if tag:
             self.queue_display.item(item_id, tags=(tag,))
-        
-        # Update listbox entry
-        index = entry.get("listbox_index")
-        if index is not None and 0 <= index < self.queue_listbox.size():
-            self.queue_listbox.delete(index)
-            self.queue_listbox.insert(index, self._format_queue_listbox_entry(entry))
-    
+
     def _update_entry_title(self, entry):
         """Update the title for a queue entry."""
-        index = entry.get("listbox_index")
-        if index is not None and 0 <= index < self.queue_listbox.size():
-            self.queue_listbox.delete(index)
-            self.queue_listbox.insert(index, self._format_queue_listbox_entry(entry))
-    
-    def _format_queue_listbox_entry(self, entry):
-        """Format a queue entry for display in the listbox."""
-        status = entry.get("status", "Pending")
-        display_index = entry.get("display_index", 0)
-        url = entry.get("url", "")
-        title = entry.get("title")
-        title_text = (title or "Fetching title...").replace("\n", " ").strip() or "Unknown title"
-        if len(title_text) > 80:
-            title_text = f"{title_text[:77]}..."
-        return f"{display_index:02d}. [{status}] {url} | {title_text}"
+        item_id = entry.get("item_id")
+        if not item_id:
+            return
+        current_values = self.queue_display.item(item_id, "values") or ("", "", "")
+        status = entry.get("status") or (current_values[0] if len(current_values) > 0 else "")
+        url = entry.get("url") or (current_values[1] if len(current_values) > 1 else "")
+        title = entry.get("title") or ""
+        self.queue_display.item(item_id, values=(status, url, title))
+
     
     def _on_download_complete(self, format_type, errors, completed):
         """Handle download completion."""
