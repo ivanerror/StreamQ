@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 import tkinter.font as tkfont
+from urllib.parse import urlparse
 
 from ..config import config
 from ..utils.ffmpeg import ensure_ffmpeg
@@ -298,6 +299,9 @@ class StreamQApp:
     def _add_to_queue(self):
         """Add URL to the download queue."""
         url = self.url_entry.get().strip()
+        if url and not self._is_valid_url(url):
+            messagebox.showwarning("Warning", "Please enter a valid URL (http/https).")
+            return
         if not url:
             messagebox.showwarning("Warning", "Please enter a URL.")
             return
@@ -328,13 +332,27 @@ class StreamQApp:
             messagebox.showwarning("Warning", "Clipboard is empty.")
             return
 
-        if not clip_text.lower().startswith(("http://", "https://")):
-            messagebox.showwarning("Warning", "Clipboard does not contain a URL.")
+        if not self._is_valid_url(clip_text):
+            messagebox.showwarning("Warning", "Clipboard does not contain a valid URL.")
             return
 
         self.url_entry.delete(0, tk.END)
         self.url_entry.insert(0, clip_text)
         self._add_to_queue()
+
+    def _is_valid_url(self, url):
+        """Basic validation for web URLs.
+
+        Accepts only http/https URLs with a hostname.
+        """
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return False
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = (parsed.netloc or "").strip()
+        return bool(host)
     
     def _start_download(self):
         """Start processing the download queue."""
