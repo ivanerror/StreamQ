@@ -151,10 +151,13 @@ class StreamQApp:
         url_section.grid(row=2, column=0, sticky="ew", pady=(8, 16))
         url_section.columnconfigure(0, weight=1)
         url_section.columnconfigure(1, weight=0)
+        url_section.columnconfigure(2, weight=0)
 
         self.url_entry = ttk.Entry(url_section)
         # Use matching vertical padding so button aligns with entry baseline
         self.url_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
+        # Press Enter to quickly add current/clipboard URL
+        self.url_entry.bind("<Return>", lambda e: self._add_to_queue())
         self.add_button = ttk.Button(
             url_section,
             text="Add to Queue",
@@ -162,6 +165,14 @@ class StreamQApp:
             style="info.TButton",
         )
         self.add_button.grid(row=0, column=1, sticky="w", padx=(0, 0), pady=(0, 8))
+        
+        # Separate button to paste from clipboard and add
+        self.paste_add_button = ttk.Button(
+            url_section,
+            text="Paste & Add",
+            command=self._paste_and_add,
+        )
+        self.paste_add_button.grid(row=0, column=2, sticky="w", padx=(8, 0), pady=(0, 8))
     
     def _build_queue_section(self, container):
         """Build the download queue display section."""
@@ -304,6 +315,26 @@ class StreamQApp:
         self.status_var.set(f"Added to queue. Pending items: {pending_total}.")
         
         self.url_entry.delete(0, tk.END)
+
+    def _paste_and_add(self):
+        """Paste URL from clipboard into entry and add to queue."""
+        clip_text = ""
+        try:
+            clip_text = (self.master.clipboard_get() or "").strip()
+        except tk.TclError:
+            clip_text = ""
+
+        if not clip_text:
+            messagebox.showwarning("Warning", "Clipboard is empty.")
+            return
+
+        if not clip_text.lower().startswith(("http://", "https://")):
+            messagebox.showwarning("Warning", "Clipboard does not contain a URL.")
+            return
+
+        self.url_entry.delete(0, tk.END)
+        self.url_entry.insert(0, clip_text)
+        self._add_to_queue()
     
     def _start_download(self):
         """Start processing the download queue."""
