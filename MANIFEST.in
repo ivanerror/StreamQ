@@ -13,5 +13,5 @@ recursive-exclude * *.so
 recursive-exclude * .DS_Store
 prune .venv
 prune ffmpeg_support/bin
-prune py_downloader/audio
-prune py_downloader/video
+prune Output/audio
+prune Output/video

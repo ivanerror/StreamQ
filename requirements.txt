@@ -1,2 +1,2 @@
-yt-dlp>=2024.8.6
+yt-dlp>=2025.10.22
 ttkbootstrap>=1.10.1

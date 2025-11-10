@@ -31,7 +31,7 @@ class Config:
         self.project_root = get_project_root()
         
         # Directory configurations
-        self.download_dir = os.path.join(self.project_root, "py_downloader")
+        self.download_dir = os.path.join(self.project_root, "Output")
         self.audio_dir = os.path.join(self.download_dir, "audio")
         self.video_dir = os.path.join(self.download_dir, "video")
         self.ffmpeg_dir = os.path.join(self.project_root, "ffmpeg_support")

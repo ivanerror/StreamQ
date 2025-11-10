@@ -101,8 +101,8 @@ Queue display (single table):
 
 ### Output Locations
 
-- Audio files: `py_downloader/audio/`
-- Video files: `py_downloader/video/`
+- Audio files: `Output/audio/`
+- Video files: `Output/video/`
 - FFmpeg binaries (Windows): `ffmpeg_support/`
 
 ## Project Structure
