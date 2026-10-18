@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-10-18
 
+### Added
+- **Ready-to-run downloads**: a Release workflow builds `StreamQ-windows-x64.exe`,
+  `StreamQ-macos-arm64.zip` and `StreamQ-linux-x64.tar.gz` (plus `SHA256SUMS.txt`)
+  and publishes them as a GitHub Release when a `v*` tag is pushed
+- **Cancel** button to stop the running download; the current item becomes *Cancelled*
+  and the remaining items stay *Pending*
+- **Retry Failed** button to re-queue failed/cancelled items (partial downloads resume)
+- Video quality options **1440p (2K)** and **2160p (4K)**; default video quality is now 1080p
+- FFmpeg is downloaded automatically on Linux (x64/arm64) too
+- Unit tests and a GitHub Actions test workflow (Ubuntu/Windows, Python 3.10/3.13)
+
 ### Fixed
+- Frozen builds crashed at startup because `PIL._tkinter_finder` (used by ttkbootstrap) was not bundled
+- The window no longer freezes on first launch while FFmpeg/Deno are downloaded; setup runs in the background
+- FFmpeg installed with Homebrew is found even when the macOS app is launched from Finder
+- Opening the download folder no longer raises an error when `xdg-open` is missing
+- The app icon is loaded from the bundle in frozen builds
 - YouTube support restored for current yt-dlp: a JavaScript runtime (Deno) is now
   detected or downloaded automatically and `yt-dlp-ejs` is installed via `yt-dlp[default]`
 - FFmpeg installed system-wide (`PATH`) is now used on macOS/Linux instead of failing at startup
@@ -22,9 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependencies updated to `yt-dlp[default]>=2026.8.19`
 - `streamq.StreamQApp` is imported lazily so core modules work without tkinter
 - Removed committed `streamq.egg-info` build metadata
-
-### Added
-- Unit tests and a GitHub Actions test workflow (Ubuntu/Windows, Python 3.10/3.13)
+- One PyInstaller spec (`StreamQ.spec`) is used by CI and `scripts/build_exe.bat`;
+  Windows/Linux builds are single-file executables without UPX (fewer antivirus false positives)
+- Replaced the Windows-only build workflow with the cross-platform Release workflow
 
 ## [1.0.0] - 2025-01-05
 

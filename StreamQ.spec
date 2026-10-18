@@ -1,22 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.utils.hooks import collect_all
+# Build with: pyinstaller --noconfirm --clean StreamQ.spec
+# Windows/Linux: single-file executable in dist/; macOS: dist/StreamQ.app
+import os
+import sys
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-datas = [('src', 'src')]
+root = SPECPATH
+datas = [(os.path.join(root, 'assets'), 'assets')]
 binaries = []
-hiddenimports = ['tkinter', 'tkinter.messagebox', 'ttkbootstrap', 'yt_dlp', 'Cryptodome']
-hiddenimports += collect_submodules('Cryptodome')
-tmp_ret = collect_all('yt_dlp')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('yt_dlp_ejs')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('ttkbootstrap')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+# ttkbootstrap renders images through PIL.ImageTk, which imports this lazily
+hiddenimports = ['tkinter', 'tkinter.messagebox', 'PIL._tkinter_finder'] + collect_submodules('Cryptodome')
+# yt-dlp loads extractors lazily and yt-dlp-ejs ships JavaScript files as package data
+for package in ('yt_dlp', 'yt_dlp_ejs', 'ttkbootstrap'):
+    pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(package)
+    datas += pkg_datas
+    binaries += pkg_binaries
+    hiddenimports += pkg_hiddenimports
 
+icon = [os.path.join(root, 'assets', 'streamq.ico')]
+is_mac = sys.platform == 'darwin'
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    [os.path.join(root, 'scripts', 'pyinstaller_entry.py')],
+    pathex=[os.path.join(root, 'src')],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -29,24 +35,45 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name='StreamQ',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=['assets\\streamq.ico'],
-)
+if is_mac:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name='StreamQ',
+        console=False,
+        upx=False,
+        argv_emulation=False,
+        icon=icon,
+    )
+    coll = COLLECT(exe, a.binaries, a.datas, name='StreamQ', upx=False)
+    app = BUNDLE(
+        coll,
+        name='StreamQ.app',
+        icon=icon,
+        bundle_identifier='io.github.ivanerror.streamq',
+        info_plist={'NSHighResolutionCapable': True},
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name='StreamQ',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        # UPX-packed executables trigger more antivirus false positives
+        upx=False,
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon=icon,
+    )

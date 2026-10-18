@@ -150,7 +150,7 @@ py_downloader/
 
 # FFmpeg artifacts
 ffmpeg_support/bin/
-ffmpeg_support/ffmpeg_download.zip
+ffmpeg_support/ffmpeg_download
 
 # Build artifacts
 build/

@@ -5,7 +5,14 @@ import platform
 import urllib.request
 import zipfile
 import shutil
+import stat
+import tarfile
 from urllib.error import URLError
+
+FFMPEG_RELEASE_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/{}"
+
+# Apps launched from Finder/desktop menus don't inherit the shell PATH (e.g. Homebrew)
+EXTRA_SEARCH_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
 
 
 def resolve_ffmpeg_url():
@@ -15,12 +22,52 @@ def resolve_ffmpeg_url():
 
     if system == "Windows":
         if machine in {"amd64", "x86_64"}:
-            return "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip"
+            return FFMPEG_RELEASE_URL.format("ffmpeg-master-latest-win64-gpl.zip")
         if machine in {"arm64", "aarch64"}:
-            return "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-winarm64-gpl.zip"
+            return FFMPEG_RELEASE_URL.format("ffmpeg-master-latest-winarm64-gpl.zip")
         if machine in {"x86", "i386", "i686"}:
-            return "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win32-gpl.zip"
+            return FFMPEG_RELEASE_URL.format("ffmpeg-master-latest-win32-gpl.zip")
+    if system == "Linux":
+        if machine in {"amd64", "x86_64"}:
+            return FFMPEG_RELEASE_URL.format("ffmpeg-master-latest-linux64-gpl.tar.xz")
+        if machine in {"arm64", "aarch64"}:
+            return FFMPEG_RELEASE_URL.format("ffmpeg-master-latest-linuxarm64-gpl.tar.xz")
     return None
+
+
+def extract_binaries(archive_path, required, bin_dir):
+    """Extract the required binaries from a .zip or .tar.xz FFmpeg archive into bin_dir."""
+    if zipfile.is_zipfile(archive_path):
+        with zipfile.ZipFile(archive_path) as archive:
+            members = {
+                os.path.basename(name): name
+                for name in archive.namelist()
+                if os.path.basename(name) in required
+            }
+            if not required.issubset(members):
+                raise RuntimeError("Arsip FFmpeg tidak berisi ffmpeg dan ffprobe.")
+            for basename, member in members.items():
+                with archive.open(member) as source, open(os.path.join(bin_dir, basename), "wb") as target:
+                    shutil.copyfileobj(source, target)
+        return
+
+    try:
+        with tarfile.open(archive_path) as archive:
+            members = {
+                os.path.basename(member.name): member
+                for member in archive.getmembers()
+                if member.isfile() and os.path.basename(member.name) in required
+            }
+            if not required.issubset(members):
+                raise RuntimeError("Arsip FFmpeg tidak berisi ffmpeg dan ffprobe.")
+            for basename, member in members.items():
+                target_path = os.path.join(bin_dir, basename)
+                with archive.extractfile(member) as source, open(target_path, "wb") as target:
+                    shutil.copyfileobj(source, target)
+                mode = os.stat(target_path).st_mode
+                os.chmod(target_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except tarfile.TarError as error:
+        raise RuntimeError("Arsip FFmpeg rusak atau tidak valid.") from error
 
 
 def prepend_to_path(path):
@@ -33,7 +80,7 @@ def prepend_to_path(path):
 
 def ensure_ffmpeg():
     """
-    Ensure FFmpeg is available, downloading it automatically on Windows if needed.
+    Ensure FFmpeg is available, downloading it automatically on Windows/Linux if needed.
     
     Returns:
         str: Path to the FFmpeg bin directory
@@ -56,19 +103,21 @@ def ensure_ffmpeg():
         return bin_dir
 
     # Fall back to a system-wide FFmpeg installation (e.g. apt, brew, winget)
-    system_ffmpeg = shutil.which("ffmpeg")
-    if system_ffmpeg and shutil.which("ffprobe"):
+    search_path = os.pathsep.join([os.environ.get("PATH", ""), *EXTRA_SEARCH_DIRS])
+    system_ffmpeg = shutil.which("ffmpeg", path=search_path)
+    if system_ffmpeg and shutil.which("ffprobe", path=search_path):
         return os.path.dirname(system_ffmpeg)
 
     download_url = resolve_ffmpeg_url()
     if not download_url:
         raise RuntimeError(
             "FFmpeg tidak ditemukan dan unduhan otomatis tidak tersedia untuk platform ini. "
-            "Silakan instal FFmpeg secara manual dan tambahkan ke PATH."
+            "Silakan instal FFmpeg secara manual dan tambahkan ke PATH "
+            "(macOS: brew install ffmpeg)."
         )
 
     os.makedirs(bin_dir, exist_ok=True)
-    archive_path = os.path.join(ffmpeg_root, "ffmpeg_download.zip")
+    archive_path = os.path.join(ffmpeg_root, "ffmpeg_download")
 
     try:
         with urllib.request.urlopen(download_url) as response, open(archive_path, "wb") as archive_file:
@@ -77,17 +126,7 @@ def ensure_ffmpeg():
         raise RuntimeError(f"Gagal mengunduh FFmpeg: {error}") from error
 
     try:
-        required = {ffmpeg_binary, ffprobe_binary}
-        with zipfile.ZipFile(archive_path) as archive:
-            available = {os.path.basename(name) for name in archive.namelist() if os.path.basename(name) in required}
-            if not required.issubset(available):
-                raise RuntimeError("Arsip FFmpeg tidak berisi ffmpeg dan ffprobe.")
-            for member in archive.namelist():
-                basename = os.path.basename(member)
-                if basename in required:
-                    target_path = os.path.join(bin_dir, basename)
-                    with archive.open(member) as source, open(target_path, "wb") as target:
-                        shutil.copyfileobj(source, target)
+        extract_binaries(archive_path, {ffmpeg_binary, ffprobe_binary}, bin_dir)
     except zipfile.BadZipFile as error:
         raise RuntimeError("Arsip FFmpeg rusak atau tidak valid.") from error
     finally:

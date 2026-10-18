@@ -1,0 +1,105 @@
+name: Release
+
+# Push a tag like v1.2.0 to build StreamQ for Windows, macOS and Linux and
+# publish the files as a GitHub Release. Run manually to only build artifacts.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+          - name: macos-arm64
+            os: macos-latest
+          # Older glibc keeps the Linux binary compatible with more distros
+          - name: linux-x64
+            os: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check tag matches app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(PYTHONPATH=src python -c "import streamq; print(streamq.__version__)")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match streamq.__version__ ($version)"
+            exit 1
+          fi
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pyinstaller
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build
+        run: pyinstaller --noconfirm --clean StreamQ.spec
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir release
+          mv dist/StreamQ.exe "release/StreamQ-${{ matrix.name }}.exe"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir release
+          ditto -c -k --keepParent dist/StreamQ.app "release/StreamQ-${{ matrix.name }}.zip"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir release
+          tar -czf "release/StreamQ-${{ matrix.name }}.tar.gz" -C dist StreamQ
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamQ-${{ matrix.name }}
+          path: release/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: release
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

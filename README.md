@@ -7,7 +7,9 @@ StreamQ is a modern desktop application for queuing and downloading video/audio 
 - Modern GUI with ttkbootstrap (Bootstrap-like themes)
 - Queue multiple YouTube downloads
 - Audio downloads (MP3) and Video downloads (MP4)
-- Automatic FFmpeg setup on Windows (uses a system FFmpeg from `PATH` when available)
+- Video quality up to 2160p (4K) and 1440p (2K)
+- Cancel a running download; retry failed or cancelled items with one click
+- Automatic FFmpeg setup on Windows and Linux (uses a system FFmpeg from `PATH` when available)
 - Automatic JavaScript runtime (Deno) setup, required by yt-dlp for full YouTube support
 - Real-time progress (percentage + speed; ETA hidden for cleaner status)
 - Background title fetching for queued items
@@ -15,15 +17,29 @@ StreamQ is a modern desktop application for queuing and downloading video/audio 
 - Auto-open download folder on completion
 - Windows launcher opens without console by default
 
-## Prerequisites
+## Download (no setup needed)
+
+Grab the latest build from the [Releases page](https://github.com/ivanerror/streamq/releases/latest):
+
+| Platform | File | How to run |
+| --- | --- | --- |
+| Windows 10/11 (x64) | `StreamQ-windows-x64.exe` | Double-click. If SmartScreen warns, click *More info* → *Run anyway* (the build is unsigned). |
+| macOS (Apple Silicon) | `StreamQ-macos-arm64.zip` | Unzip, then right-click `StreamQ.app` → *Open* the first time (unsigned app). Install FFmpeg with `brew install ffmpeg`. |
+| Linux (x64) | `StreamQ-linux-x64.tar.gz` | `tar -xzf StreamQ-linux-x64.tar.gz && ./StreamQ` |
+
+On first launch StreamQ downloads FFmpeg (Windows/Linux) and the Deno JavaScript runtime in the background; the *Start Download* button becomes available once they are ready. App data and downloads are stored in `~/StreamQ/` (`%USERPROFILE%\StreamQ\` on Windows).
+
+## Run from Source
+
+### Prerequisites
 
 - Python 3.10+ installed (required by current yt-dlp)
 - Windows 10/11 recommended; macOS/Linux supported
 - Internet connection (for dependencies and FFmpeg download)
 
-## Quick Start
+### Quick Start
 
-### Option 1: Windows Convenience Script
+#### Option 1: Windows Convenience Script
 
 The easiest way to start on Windows:
 
@@ -40,7 +56,7 @@ Flags:
 - `--console` run with a terminal window and logs
 - `--update` force re-install dependencies (refresh the cache)
 
-### Option 2: Manual Installation (All Platforms)
+#### Option 2: Manual Installation (All Platforms)
 
 ```bash
 # Create and activate virtual environment
@@ -60,7 +76,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### Option 3: Install as a Package
+#### Option 3: Install as a Package
 
 ```bash
 # Install in development mode
@@ -74,18 +90,26 @@ streamq
 
 # Or launch without console (GUI script on Windows)
 streamq-gui
-
-## Build Windows EXE
-
-Build a standalone Windows executable with PyInstaller:
-
-```bat
-scripts\build_exe.bat
 ```
 
-The output will be in `dist\StreamQ\StreamQ.exe`.
+## Build Executables
 
-CI build: tagging a commit with `v*` triggers GitHub Actions workflow to build and upload the Windows artifact automatically.
+All platforms use the same PyInstaller spec:
+
+```bash
+pip install -r requirements.txt pyinstaller
+pyinstaller --noconfirm --clean StreamQ.spec
+```
+
+Output: `dist/StreamQ.exe` (Windows), `dist/StreamQ` (Linux) or `dist/StreamQ.app` (macOS). On Windows you can also run `scripts\build_exe.bat`.
+
+### Publishing a Release
+
+1. Bump `__version__` in `src/streamq/__init__.py` (and `version` in `pyproject.toml`/`setup.py`), update `CHANGELOG.md`
+2. Tag and push: `git tag v1.2.0 && git push origin v1.2.0`
+3. The **Release** workflow runs the tests, builds Windows/macOS/Linux executables and publishes them with `SHA256SUMS.txt` on the Releases page
+
+The workflow fails if the tag does not match `__version__`. Running it manually (*Actions → Release → Run workflow*) only builds downloadable artifacts.
 
 ## Usage
 
@@ -94,9 +118,11 @@ CI build: tagging a commit with `v*` triggers GitHub Actions workflow to build a
 3. Choose Audio (MP3) or Video (MP4)
 4. Select quality
 5. Click “Start Download”
+6. Click “Cancel” to stop; the current item becomes *Cancelled* and the rest stay *Pending*
+7. Click “Retry Failed” to re-queue failed/cancelled items (partial downloads are resumed)
 
 Queue display (single table):
-- `Status`: Pending / Downloading / Completed / Failed
+- `Status`: Pending / Downloading / Completed / Failed / Cancelled
 - `Link`: The original URL you added
 - `Title`: Fetched automatically in the background
 
@@ -104,7 +130,7 @@ Queue display (single table):
 
 - Audio files: `Output/audio/`
 - Video files: `Output/video/`
-- FFmpeg binaries (Windows): `ffmpeg_support/`
+- FFmpeg binaries (Windows/Linux auto-download): `ffmpeg_support/`
 - Deno JavaScript runtime (when not found in `PATH`): `js_runtime/`
 
 ## Project Structure
@@ -141,12 +167,14 @@ README.md
 - ttkbootstrap theme enabled by default (changeable in `main.py` or `src/streamq/__main__.py`)
 - `run.bat` launches without console by default; use `--console` for logs
 
-### macOS/Linux
-- Install FFmpeg manually:
-  - macOS: `brew install ffmpeg`
-  - Ubuntu/Debian: `sudo apt install ffmpeg`
-- Ensure `ffmpeg` and `ffprobe` are available in `PATH`
+### All platforms
 - Deno is downloaded automatically if no JavaScript runtime (deno, node, quickjs, bun) is in `PATH`
+
+### Linux
+- FFmpeg from `PATH` is used if installed (`sudo apt install ffmpeg`); otherwise a static build is downloaded on first run (x64/arm64)
+
+### macOS
+- Install FFmpeg with `brew install ffmpeg` (Homebrew locations are detected even when launched from Finder)
 
 ## Development
 

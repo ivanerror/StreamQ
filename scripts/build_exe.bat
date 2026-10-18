@@ -1,7 +1,7 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 
-rem Build StreamQ Windows .exe using PyInstaller
+rem Build StreamQ Windows .exe using PyInstaller (same spec as the Release workflow)
 rem Usage: double-click or run in terminal
 
 pushd "%~dp0\.." >nul 2>&1
@@ -16,24 +16,9 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install pyinstaller
 
-rem Build
-set "ICON=assets\streamq.ico"
-set "ICON_ARG="
-if exist "%ICON%" set "ICON_ARG=--icon \"%ICON%\""
-
-pyinstaller ^
-  --noconfirm ^
-  --clean ^
-  --name "StreamQ" ^
-  --windowed ^
-  %ICON_ARG% ^
-  --collect-all yt_dlp ^
-  --collect-all ttkbootstrap ^
-  --collect-all yt_dlp_ejs ^
-  --collect-submodules Cryptodome ^
-  main.py
+pyinstaller --noconfirm --clean StreamQ.spec
 
 echo.
-echo Build complete. See dist\StreamQ\StreamQ.exe
+echo Build complete. See dist\StreamQ.exe
 popd
 endlocal

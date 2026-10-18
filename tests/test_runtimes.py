@@ -42,5 +42,25 @@ def test_ensure_js_runtimes_downloads_when_missing():
 
 def test_ensure_ffmpeg_uses_system_install(tmp_path):
     with mock.patch("streamq.config.get_project_root", return_value=str(tmp_path)), \
-            mock.patch("shutil.which", side_effect=lambda name: f"/usr/bin/{name}"):
+            mock.patch("shutil.which", side_effect=lambda name, path=None: f"/usr/bin/{name}"):
         assert ffmpeg.ensure_ffmpeg() == "/usr/bin"
+
+
+def test_extract_binaries_from_tar_xz(tmp_path):
+    import io
+    import os
+    import tarfile
+
+    archive = tmp_path / "ffmpeg.tar.xz"
+    with tarfile.open(archive, "w:xz") as tar:
+        for name in ("ffmpeg-master/bin/ffmpeg", "ffmpeg-master/bin/ffprobe", "ffmpeg-master/LICENSE"):
+            info = tarfile.TarInfo(name)
+            info.size = 4
+            tar.addfile(info, io.BytesIO(b"data"))
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    ffmpeg.extract_binaries(str(archive), {"ffmpeg", "ffprobe"}, str(bin_dir))
+    assert sorted(os.listdir(bin_dir)) == ["ffmpeg", "ffprobe"]
+    if os.name != "nt":
+        assert os.access(bin_dir / "ffmpeg", os.X_OK)

@@ -26,10 +26,9 @@ class StreamQApp:
             master: The root Tkinter window
         """
         self.master = master
-        self.ffmpeg_dir = ensure_ffmpeg()
         
-        # Initialize download system
-        self.download_manager = DownloadManager(self.ffmpeg_dir)
+        # Initialize download system (FFmpeg and JS runtime are prepared in the background)
+        self.download_manager = DownloadManager()
         self.download_queue = DownloadQueue(self.download_manager)
         
         # Set up callbacks
@@ -49,6 +48,7 @@ class StreamQApp:
             "Downloading": "status-downloading", 
             "Completed": "status-completed",
             "Failed": "status-failed",
+            "Cancelled": "status-cancelled",
         }
         
         # Configure and build the UI
@@ -59,40 +59,49 @@ class StreamQApp:
         # Ensure directories exist
         config.ensure_directories()
         
-        # Prepare the JavaScript runtime required by YouTube without blocking the UI
-        self._set_js_runtime_controls(enabled=False)
-        self.status_var.set("Preparing JavaScript runtime for YouTube...")
-        threading.Thread(target=self._prepare_js_runtime, daemon=True).start()
+        # Prepare FFmpeg and the JavaScript runtime (first run downloads them)
+        # without blocking the UI; downloads can start once both are ready.
+        self.dependencies_ready = False
+        self.download_button.state(["disabled"])
+        self.status_var.set("Preparing FFmpeg and JavaScript runtime (first run may take a minute)...")
+        threading.Thread(target=self._prepare_dependencies, daemon=True).start()
     
-    def _prepare_js_runtime(self):
-        """Find or download a JavaScript runtime in a background thread."""
+    def _prepare_dependencies(self):
+        """Find or download FFmpeg and a JavaScript runtime in a background thread."""
+        ffmpeg_dir = ffmpeg_error = None
+        runtimes = runtime_error = None
+        try:
+            ffmpeg_dir = ensure_ffmpeg()
+        except Exception as exc:
+            ffmpeg_error = str(exc)
         try:
             runtimes = ensure_js_runtimes()
-            error = None
         except Exception as exc:
-            runtimes = None
-            error = str(exc)
-        self.master.after(0, self._on_js_runtime_ready, runtimes, error)
+            runtime_error = str(exc)
+        self.master.after(0, self._on_dependencies_ready, ffmpeg_dir, ffmpeg_error, runtimes, runtime_error)
     
-    def _on_js_runtime_ready(self, runtimes, error):
-        """Apply the JavaScript runtime setup result in the main thread."""
+    def _on_dependencies_ready(self, ffmpeg_dir, ffmpeg_error, runtimes, runtime_error):
+        """Apply the dependency setup result in the main thread."""
         self.download_manager.set_js_runtimes(runtimes)
-        if not self.download_queue.is_downloading:
-            self._set_js_runtime_controls(enabled=True)
-        if error:
+        if ffmpeg_error:
+            # FFmpeg is needed for MP3 conversion and merging video/audio streams
+            self.status_var.set("FFmpeg unavailable; downloads are disabled.")
+            messagebox.showerror("FFmpeg", ffmpeg_error)
+            return
+        
+        self.download_manager.set_ffmpeg_dir(ffmpeg_dir)
+        self.dependencies_ready = True
+        self.download_button.state(["!disabled"])
+        if runtime_error:
             self.status_var.set("JavaScript runtime unavailable; some YouTube formats may be missing.")
             messagebox.showwarning(
                 "JavaScript runtime",
-                f"{error}\n\nYouTube downloads may be limited or fail. "
+                f"{runtime_error}\n\nYouTube downloads may be limited or fail. "
                 "Install Deno (https://deno.com) to enable full YouTube support.",
             )
         else:
             runtime = next(iter(runtimes))
             self.status_var.set(f"Ready to download. (JavaScript runtime: {runtime})")
-    
-    def _set_js_runtime_controls(self, enabled):
-        """Enable or disable the download button while the JS runtime is prepared."""
-        self.download_button.state(["!disabled"] if enabled else ["disabled"])
     
     def _configure_window(self):
         """Configure the main window appearance and styling."""
@@ -101,7 +110,9 @@ class StreamQApp:
         self.master.minsize(*config.window_min_size)
         # Set window icon if available (Windows .ico)
         try:
-            icon_path = os.path.join(config.project_root, "assets", "streamq.ico")
+            # PyInstaller unpacks bundled data files into sys._MEIPASS
+            base_dir = getattr(sys, "_MEIPASS", config.project_root)
+            icon_path = os.path.join(base_dir, "assets", "streamq.ico")
             if os.name == "nt" and os.path.isfile(icon_path):
                 self.master.iconbitmap(icon_path)
         except Exception:
@@ -249,6 +260,7 @@ class StreamQApp:
             "status-downloading": "#005FB8",
             "status-completed": "#107C10",
             "status-failed": "#D13438",
+            "status-cancelled": "#CA5010",
         }
         for tag, color in tag_colors.items():
             self.queue_display.tag_configure(tag, foreground=color)
@@ -314,23 +326,40 @@ class StreamQApp:
         actions_frame.grid(row=6, column=0, sticky="ew", pady=(0, 8))
         actions_frame.columnconfigure(0, weight=1)
         
+        self.retry_button = ttk.Button(
+            actions_frame,
+            text="Retry Failed",
+            command=self._retry_failed,
+            style="secondary.TButton",
+        )
+        self.retry_button.grid(row=0, column=0, sticky="w")
+        
+        self.cancel_button = ttk.Button(
+            actions_frame,
+            text="Cancel",
+            command=self._cancel_download,
+            style="danger.TButton",
+        )
+        self.cancel_button.grid(row=0, column=1, sticky="e", padx=(0, 8))
+        self.cancel_button.state(["disabled"])
+        
         self.download_button = ttk.Button(
             actions_frame,
             text="Start Download",
             command=self._start_download,
             style="primary.TButton",
         )
-        self.download_button.grid(row=0, column=0, sticky="e")
+        self.download_button.grid(row=0, column=2, sticky="e")
     
     def _update_quality_options(self):
         """Update quality options based on selected format."""
         format_type = self.format_var.get()
         if format_type == "audio":
-            qualities = config.audio_qualities
+            qualities, default = config.audio_qualities, config.default_audio_quality
         else:
-            qualities = config.video_qualities
+            qualities, default = config.video_qualities, config.default_video_quality
         self.quality_dropdown["values"] = qualities
-        self.quality_var.set(qualities[-1])
+        self.quality_var.set(default)
     
     def _add_to_queue(self):
         """Add URL to the download queue."""
@@ -413,13 +442,33 @@ class StreamQApp:
         
         self.download_queue.process_queue(format_type, quality)
     
+    def _cancel_download(self):
+        """Stop the running download; remaining items stay Pending."""
+        if not self.download_queue.is_downloading:
+            return
+        self.download_queue.cancel()
+        self.cancel_button.state(["disabled"])
+        self.status_var.set("Cancelling...")
+    
+    def _retry_failed(self):
+        """Reset failed/cancelled items to Pending and start downloading them."""
+        if self.download_queue.is_downloading:
+            return
+        count = self.download_queue.retry_failed()
+        if not count:
+            messagebox.showinfo("Info", "No failed or cancelled items to retry.")
+            return
+        self.status_var.set(f"{count} item(s) reset to Pending.")
+        if self.dependencies_ready:
+            self._start_download()
+    
     def _set_controls_state(self, disabled):
         """Enable or disable UI controls."""
         widgets = [
             self.url_entry,
             self.add_button,
             self.paste_add_button,
-            self.download_button,
+            self.retry_button,
             self.format_radio_audio,
             self.format_radio_video,
             self.quality_dropdown,
@@ -429,6 +478,8 @@ class StreamQApp:
                 widget.state(["disabled"])
             else:
                 widget.state(["!disabled"])
+        self.download_button.state(["disabled"] if disabled or not self.dependencies_ready else ["!disabled"])
+        self.cancel_button.state(["!disabled"] if disabled else ["disabled"])
         if not disabled:
             self.url_entry.focus_set()
     
@@ -473,11 +524,11 @@ class StreamQApp:
         self.queue_display.item(item_id, values=(status, url, title))
 
     
-    def _on_download_complete(self, format_type, errors, completed):
+    def _on_download_complete(self, format_type, errors, completed, cancelled=False):
         """Handle download completion."""
-        self.master.after(0, self._handle_download_complete, format_type, errors, completed)
+        self.master.after(0, self._handle_download_complete, format_type, errors, completed, cancelled)
     
-    def _handle_download_complete(self, format_type, errors, completed):
+    def _handle_download_complete(self, format_type, errors, completed, cancelled=False):
         """Handle download completion in the main thread."""
         self._set_controls_state(disabled=False)
         
@@ -486,7 +537,12 @@ class StreamQApp:
         counts = self.download_queue.get_status_counts()
         pending_count = counts["Pending"]
         
-        if failure_count:
+        if cancelled:
+            self.progress_var.set(0.0)
+            self.status_var.set(
+                f"Cancelled | Success {success_count} | Failed {failure_count} | Pending {pending_count}"
+            )
+        elif failure_count:
             details = "\n".join(f"- {url}: {error}" for url, error in errors[:3])
             if success_count:
                 self.progress_var.set(100.0)
@@ -513,9 +569,13 @@ class StreamQApp:
         download_dir = config.get_download_dir(format_type)
         if not os.path.isdir(download_dir):
             return
-        if os.name == "nt":
-            os.startfile(download_dir)
-        elif sys.platform == "darwin":
-            subprocess.call(["open", download_dir])
-        else:
-            subprocess.call(["xdg-open", download_dir])
+        try:
+            if os.name == "nt":
+                os.startfile(download_dir)
+            elif sys.platform == "darwin":
+                subprocess.call(["open", download_dir])
+            else:
+                subprocess.call(["xdg-open", download_dir])
+        except OSError:
+            # No file manager launcher available (e.g. minimal Linux desktop)
+            self.status_var.set(f"{self.status_var.get()} | Saved to {download_dir}")
