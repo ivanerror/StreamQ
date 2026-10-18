@@ -101,7 +101,7 @@ export function AddBar(props: Props) {
           </label>
         </fieldset>
         <label className="quality-field">
-          Quality
+          <span className="sr-only">Quality</span>
           <select className="select" value={props.quality} onChange={(e) => props.onQualityChange(Number(e.target.value))}>
             {[...qualities].reverse().map((q) => (
               <option key={q} value={q}>
