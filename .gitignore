@@ -212,3 +212,6 @@ secrets.json
 *.rar
 *.7z
 
+
+# Bundled JavaScript runtime (Deno)
+js_runtime/

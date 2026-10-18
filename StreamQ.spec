@@ -4,9 +4,11 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('src', 'src')]
 binaries = []
-hiddenimports = ['tkinter', 'tkinter.messagebox', 'ttkbootstrap', 'yt_dlp', 'pycryptodomex']
-hiddenimports += collect_submodules('pycryptodomex')
+hiddenimports = ['tkinter', 'tkinter.messagebox', 'ttkbootstrap', 'yt_dlp', 'Cryptodome']
+hiddenimports += collect_submodules('Cryptodome')
 tmp_ret = collect_all('yt_dlp')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('yt_dlp_ejs')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('ttkbootstrap')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]

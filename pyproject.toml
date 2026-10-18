@@ -4,35 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "streamq"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
     {name = "ivanerror", email = "contact@example.com"},
 ]
 description = "Queue and download video/audio from YouTube using yt-dlp with a clean GUI"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Video",
     "Topic :: Internet :: WWW/HTTP",
 ]
 keywords = ["youtube", "download", "video", "audio", "yt-dlp", "gui", "tkinter"]
 dependencies = [
-    "yt-dlp>=2025.09.26",
-    "brotli",
-    "mutagen",
-    "pycryptodomex",
-    "websockets",
+    # [default] pulls in yt-dlp-ejs (required for YouTube), brotli, certifi,
+    # mutagen, pycryptodomex, requests and websockets
+    "yt-dlp[default]>=2026.8.19",
     "ttkbootstrap>=1.10.1",
 ]
 
@@ -56,6 +53,10 @@ where = ["src"]
 [tool.setuptools.package-data]
 streamq = ["py.typed"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
 # Optional development dependencies
 [project.optional-dependencies]
 dev = [
@@ -70,7 +71,7 @@ dev = [
 # Tool configurations
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -93,7 +94,7 @@ line_length = 88
 known_first_party = ["streamq"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

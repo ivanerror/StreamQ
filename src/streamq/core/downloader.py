@@ -17,6 +17,8 @@ class DownloadManager:
             ffmpeg_dir (str): Path to the FFmpeg bin directory
         """
         self.ffmpeg_dir = ffmpeg_dir
+        # yt-dlp js_runtimes option; None lets yt-dlp use its default (deno in PATH)
+        self.js_runtimes = None
         self.progress_callback = None
         self.status_callback = None
     
@@ -28,6 +30,17 @@ class DownloadManager:
         """Set the status update callback function."""
         self.status_callback = callback
     
+    def set_js_runtimes(self, js_runtimes):
+        """Set the JavaScript runtimes yt-dlp may use (required for YouTube)."""
+        self.js_runtimes = js_runtimes or None
+    
+    def _base_options(self):
+        """Build yt-dlp options shared by all requests."""
+        options = {}
+        if self.js_runtimes:
+            options["js_runtimes"] = self.js_runtimes
+        return options
+    
     def fetch_video_title(self, url):
         """
         Fetch the title of a YouTube video without downloading.
@@ -38,11 +51,14 @@ class DownloadManager:
         Returns:
             str: Video title or error message
         """
-        options = {
+        options = self._base_options()
+        options.update({
             "quiet": True,
             "skip_download": True,
             "no_warnings": True,
-        }
+            # Don't resolve every playlist entry just to read the title
+            "extract_flat": "in_playlist",
+        })
         
         try:
             with yt_dlp.YoutubeDL(options) as ydl:
@@ -66,9 +82,10 @@ class DownloadManager:
         download_dir = config.get_download_dir(format_type)
         os.makedirs(download_dir, exist_ok=True)
         
+        ydl_opts = self._base_options()
         if format_type == "audio":
-            ydl_opts = {
-                "format": f"bestaudio[abr<={quality}]/best",
+            ydl_opts.update({
+                "format": f"bestaudio[abr<={quality}]/bestaudio/best",
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -78,14 +95,16 @@ class DownloadManager:
                 ],
                 "outtmpl": os.path.join(download_dir, "%(title)s.%(ext)s"),
                 "ffmpeg_location": self.ffmpeg_dir,
-            }
+            })
         else:
-            ydl_opts = {
-                "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]",
+            ydl_opts.update({
+                "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
+                # Prefer H.264/AAC streams so the merged MP4 plays everywhere
+                "format_sort": [f"res:{quality}", "vcodec:h264", "acodec:aac"],
                 "outtmpl": os.path.join(download_dir, "%(title)s.%(ext)s"),
                 "ffmpeg_location": self.ffmpeg_dir,
                 "merge_output_format": "mp4",
-            }
+            })
         
         def progress_hook(data):
             self._handle_progress(data, url, index, total)

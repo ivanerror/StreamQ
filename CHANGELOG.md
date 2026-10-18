@@ -5,6 +5,27 @@ All notable changes to StreamQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-18
+
+### Fixed
+- YouTube support restored for current yt-dlp: a JavaScript runtime (Deno) is now
+  detected or downloaded automatically and `yt-dlp-ejs` is installed via `yt-dlp[default]`
+- FFmpeg installed system-wide (`PATH`) is now used on macOS/Linux instead of failing at startup
+- Audio downloads no longer fall back to a full video stream when no audio-only format matches the bitrate
+- Video downloads prefer H.264/AAC so the merged MP4 plays in common players
+- Fetching the title of a playlist URL no longer resolves every entry
+- "Paste & Add" is disabled while downloads run, like the other inputs
+- PyInstaller builds bundle `yt-dlp-ejs` and use the correct `Cryptodome` module name
+
+### Changed
+- Minimum Python version is now 3.10 (required by yt-dlp)
+- Dependencies updated to `yt-dlp[default]>=2026.8.19`
+- `streamq.StreamQApp` is imported lazily so core modules work without tkinter
+- Removed committed `streamq.egg-info` build metadata
+
+### Added
+- Unit tests and a GitHub Actions test workflow (Ubuntu/Windows, Python 3.10/3.13)
+
 ## [1.0.0] - 2025-01-05
 
 ### Added

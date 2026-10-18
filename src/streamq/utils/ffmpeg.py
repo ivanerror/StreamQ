@@ -55,6 +55,11 @@ def ensure_ffmpeg():
         prepend_to_path(bin_dir)
         return bin_dir
 
+    # Fall back to a system-wide FFmpeg installation (e.g. apt, brew, winget)
+    system_ffmpeg = shutil.which("ffmpeg")
+    if system_ffmpeg and shutil.which("ffprobe"):
+        return os.path.dirname(system_ffmpeg)
+
     download_url = resolve_ffmpeg_url()
     if not download_url:
         raise RuntimeError(

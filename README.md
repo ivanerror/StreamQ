@@ -7,7 +7,8 @@ StreamQ is a modern desktop application for queuing and downloading video/audio 
 - Modern GUI with ttkbootstrap (Bootstrap-like themes)
 - Queue multiple YouTube downloads
 - Audio downloads (MP3) and Video downloads (MP4)
-- Automatic FFmpeg setup on Windows
+- Automatic FFmpeg setup on Windows (uses a system FFmpeg from `PATH` when available)
+- Automatic JavaScript runtime (Deno) setup, required by yt-dlp for full YouTube support
 - Real-time progress (percentage + speed; ETA hidden for cleaner status)
 - Background title fetching for queued items
 - Single queue table view: columns Status | Link | Title
@@ -16,7 +17,7 @@ StreamQ is a modern desktop application for queuing and downloading video/audio 
 
 ## Prerequisites
 
-- Python 3.8+ installed
+- Python 3.10+ installed (required by current yt-dlp)
 - Windows 10/11 recommended; macOS/Linux supported
 - Internet connection (for dependencies and FFmpeg download)
 
@@ -104,6 +105,7 @@ Queue display (single table):
 - Audio files: `Output/audio/`
 - Video files: `Output/video/`
 - FFmpeg binaries (Windows): `ffmpeg_support/`
+- Deno JavaScript runtime (when not found in `PATH`): `js_runtime/`
 
 ## Project Structure
 
@@ -116,6 +118,7 @@ src/
     utils/
       __init__.py
       ffmpeg.py        # FFmpeg handling utilities
+      jsruntime.py     # JavaScript runtime (Deno) detection/download
     core/
       __init__.py
       app.py           # Main GUI application
@@ -143,6 +146,7 @@ README.md
   - macOS: `brew install ffmpeg`
   - Ubuntu/Debian: `sudo apt install ffmpeg`
 - Ensure `ffmpeg` and `ffprobe` are available in `PATH`
+- Deno is downloaded automatically if no JavaScript runtime (deno, node, quickjs, bun) is in `PATH`
 
 ## Development
 
@@ -177,7 +181,7 @@ mypy src/
 ## Troubleshooting
 
 **No GUI or errors at startup**
-- Ensure you are using Python 3.8+
+- Ensure you are using Python 3.10+
 - Activate the virtual environment
 - Use `run.bat --console` to see logs
 
@@ -191,7 +195,8 @@ mypy src/
 
 **Download failed**
 - Verify YouTube URL
-- Update yt-dlp: `pip install -U yt-dlp`
+- Update yt-dlp: `pip install -U "yt-dlp[default]"` (or `run.bat --update`)
+- YouTube formats missing / "n challenge" or "JS runtime" warnings: make sure Deno is installed or let StreamQ download it into `js_runtime/`
 
 ## License
 

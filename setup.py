@@ -4,9 +4,9 @@ from setuptools import setup, find_packages
 import os
 import sys
 
-# Ensure we're using Python 3.8+
-if sys.version_info < (3, 8):
-    print("StreamQ requires Python 3.8 or later.")
+# Ensure we're using Python 3.10+ (required by yt-dlp)
+if sys.version_info < (3, 10):
+    print("StreamQ requires Python 3.10 or later.")
     sys.exit(1)
 
 # Read the README file
@@ -23,11 +23,11 @@ def read_requirements():
     if os.path.exists(req_path):
         with open(req_path, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip() and not line.startswith("#")]
-    return ["yt-dlp>=2025.09.26"]
+    return ["yt-dlp[default]>=2026.8.19", "ttkbootstrap>=1.10.1"]
 
 setup(
     name="streamq",
-    version="1.0.0",
+    version="1.1.0",
     author="ivanerror",
     author_email="contact@example.com",
     description="Queue and download video/audio from YouTube using yt-dlp with a clean GUI",
@@ -46,15 +46,14 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Multimedia :: Video",
         "Topic :: Internet :: WWW/HTTP",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=read_requirements(),
     extras_require={
         "dev": [

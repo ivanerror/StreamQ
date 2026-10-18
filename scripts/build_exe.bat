@@ -29,7 +29,8 @@ pyinstaller ^
   %ICON_ARG% ^
   --collect-all yt_dlp ^
   --collect-all ttkbootstrap ^
-  --collect-submodules pycryptodomex ^
+  --collect-all yt_dlp_ejs ^
+  --collect-submodules Cryptodome ^
   main.py
 
 echo.

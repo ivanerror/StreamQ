@@ -53,8 +53,8 @@ if not defined PYTHON_CMD (
 
 :: Error if no Python found
 if not defined PYTHON_CMD (
-    echo       ERROR: Python 3.8+ not found!
-    echo       Please install Python 3.8 or later and ensure it's in your PATH.
+    echo       ERROR: Python 3.10+ not found!
+    echo       Please install Python 3.10 or later and ensure it's in your PATH.
     echo       Download from: https://www.python.org/downloads/
     popd
     pause
@@ -62,9 +62,9 @@ if not defined PYTHON_CMD (
 )
 
 :: Check Python version
-%PYTHON_CMD% -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" 2>nul
+%PYTHON_CMD% -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" 2>nul
 if errorlevel 1 (
-    echo       ERROR: Python 3.8 or later is required.
+    echo       ERROR: Python 3.10 or later is required.
     %PYTHON_CMD% --version
     popd
     pause

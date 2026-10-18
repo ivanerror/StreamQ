@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from ..config import config
 from ..utils.ffmpeg import ensure_ffmpeg
+from ..utils.jsruntime import ensure_js_runtimes
 from .downloader import DownloadManager, DownloadQueue
 
 
@@ -57,6 +58,41 @@ class StreamQApp:
         
         # Ensure directories exist
         config.ensure_directories()
+        
+        # Prepare the JavaScript runtime required by YouTube without blocking the UI
+        self._set_js_runtime_controls(enabled=False)
+        self.status_var.set("Preparing JavaScript runtime for YouTube...")
+        threading.Thread(target=self._prepare_js_runtime, daemon=True).start()
+    
+    def _prepare_js_runtime(self):
+        """Find or download a JavaScript runtime in a background thread."""
+        try:
+            runtimes = ensure_js_runtimes()
+            error = None
+        except Exception as exc:
+            runtimes = None
+            error = str(exc)
+        self.master.after(0, self._on_js_runtime_ready, runtimes, error)
+    
+    def _on_js_runtime_ready(self, runtimes, error):
+        """Apply the JavaScript runtime setup result in the main thread."""
+        self.download_manager.set_js_runtimes(runtimes)
+        if not self.download_queue.is_downloading:
+            self._set_js_runtime_controls(enabled=True)
+        if error:
+            self.status_var.set("JavaScript runtime unavailable; some YouTube formats may be missing.")
+            messagebox.showwarning(
+                "JavaScript runtime",
+                f"{error}\n\nYouTube downloads may be limited or fail. "
+                "Install Deno (https://deno.com) to enable full YouTube support.",
+            )
+        else:
+            runtime = next(iter(runtimes))
+            self.status_var.set(f"Ready to download. (JavaScript runtime: {runtime})")
+    
+    def _set_js_runtime_controls(self, enabled):
+        """Enable or disable the download button while the JS runtime is prepared."""
+        self.download_button.state(["!disabled"] if enabled else ["disabled"])
     
     def _configure_window(self):
         """Configure the main window appearance and styling."""
@@ -382,6 +418,7 @@ class StreamQApp:
         widgets = [
             self.url_entry,
             self.add_button,
+            self.paste_add_button,
             self.download_button,
             self.format_radio_audio,
             self.format_radio_video,
