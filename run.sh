@@ -44,7 +44,7 @@ PYTHON_CMD=""
 
 # Try python3 first (preferred on Unix)
 if command -v python3 >/dev/null 2>&1; then
-    if python3 -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" 2>/dev/null; then
+    if python3 -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
         PYTHON_CMD="python3"
         print_success "Found: python3"
     fi
@@ -52,7 +52,7 @@ fi
 
 # Try python if python3 not found
 if [ -z "$PYTHON_CMD" ] && command -v python >/dev/null 2>&1; then
-    if python -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" 2>/dev/null; then
+    if python -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
         PYTHON_CMD="python"
         print_success "Found: python"
     fi
@@ -60,8 +60,8 @@ fi
 
 # Error if no suitable Python found
 if [ -z "$PYTHON_CMD" ]; then
-    print_error "Python 3.8+ not found!"
-    echo "      Please install Python 3.8 or later:"
+    print_error "Python 3.10+ not found!"
+    echo "      Please install Python 3.10 or later:"
     echo "      - macOS: brew install python"
     echo "      - Ubuntu/Debian: sudo apt install python3 python3-venv python3-pip"
     echo "      - Fedora: sudo dnf install python3 python3-pip"

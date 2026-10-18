@@ -38,7 +38,10 @@ class Config:
         
         # Quality options
         self.audio_qualities = ["64", "128", "192", "256", "320"]
-        self.video_qualities = ["144", "240", "360", "480", "720", "1080"]
+        # 1440 (2K) and 2160 (4K) are only available as VP9/AV1 on YouTube
+        self.video_qualities = ["144", "240", "360", "480", "720", "1080", "1440", "2160"]
+        self.default_audio_quality = "320"
+        self.default_video_quality = "1080"
         
         # UI settings
         self.window_title = "StreamQ"

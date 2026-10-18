@@ -1,0 +1,82 @@
+name: Desktop (Tauri)
+
+# Checks the Tauri 2 app on all three platforms. Besides unit tests this runs the
+# integration tests, which download yt-dlp, FFmpeg and Deno exactly like a first
+# launch does (proving every download URL and checksum per platform) and drive the
+# real yt-dlp binary against a local HTTP server, including cancel.
+on:
+  push:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Typecheck, unit test and build the UI
+        run: |
+          npm run typecheck
+          npm test
+          npx vite build
+
+      - name: Rust unit tests
+        working-directory: desktop/src-tauri
+        run: cargo test
+
+      - name: First-launch component downloads (yt-dlp, FFmpeg, Deno)
+        working-directory: desktop/src-tauri
+        run: cargo test installs_all_components -- --ignored --nocapture
+
+      - name: Fetch yt-dlp for engine tests
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) asset=yt-dlp.exe ;;
+            macOS) asset=yt-dlp_macos ;;
+            Linux) asset=yt-dlp_linux ;;
+          esac
+          curl -sSL -o "$RUNNER_TEMP/$asset" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/$asset"
+          chmod +x "$RUNNER_TEMP/$asset"
+          echo "STREAMQ_YTDLP=$RUNNER_TEMP/$asset" >> "$GITHUB_ENV"
+
+      - name: Engine tests (progress, cancel, errors)
+        working-directory: desktop/src-tauri
+        run: cargo test integration_tests -- --ignored --skip installs_all_components --test-threads 1

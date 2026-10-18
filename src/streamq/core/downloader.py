@@ -3,20 +3,23 @@
 import os
 import threading
 import yt_dlp
+from yt_dlp.utils import DownloadCancelled
 from ..config import config
 
 
 class DownloadManager:
     """Manages YouTube video/audio downloads using yt-dlp."""
     
-    def __init__(self, ffmpeg_dir):
+    def __init__(self, ffmpeg_dir=None):
         """
         Initialize the download manager.
         
         Args:
-            ffmpeg_dir (str): Path to the FFmpeg bin directory
+            ffmpeg_dir (str): Path to the FFmpeg bin directory (can be set later)
         """
         self.ffmpeg_dir = ffmpeg_dir
+        # yt-dlp js_runtimes option; None lets yt-dlp use its default (deno in PATH)
+        self.js_runtimes = None
         self.progress_callback = None
         self.status_callback = None
     
@@ -28,6 +31,21 @@ class DownloadManager:
         """Set the status update callback function."""
         self.status_callback = callback
     
+    def set_ffmpeg_dir(self, ffmpeg_dir):
+        """Set the FFmpeg bin directory."""
+        self.ffmpeg_dir = ffmpeg_dir
+    
+    def set_js_runtimes(self, js_runtimes):
+        """Set the JavaScript runtimes yt-dlp may use (required for YouTube)."""
+        self.js_runtimes = js_runtimes or None
+    
+    def _base_options(self):
+        """Build yt-dlp options shared by all requests."""
+        options = {}
+        if self.js_runtimes:
+            options["js_runtimes"] = self.js_runtimes
+        return options
+    
     def fetch_video_title(self, url):
         """
         Fetch the title of a YouTube video without downloading.
@@ -38,11 +56,14 @@ class DownloadManager:
         Returns:
             str: Video title or error message
         """
-        options = {
+        options = self._base_options()
+        options.update({
             "quiet": True,
             "skip_download": True,
             "no_warnings": True,
-        }
+            # Don't resolve every playlist entry just to read the title
+            "extract_flat": "in_playlist",
+        })
         
         try:
             with yt_dlp.YoutubeDL(options) as ydl:
@@ -52,7 +73,7 @@ class DownloadManager:
         except Exception:
             return "Title unavailable"
     
-    def download_video(self, url, format_type, quality, index=1, total=1):
+    def download_video(self, url, format_type, quality, index=1, total=1, cancel_event=None):
         """
         Download a single video/audio from YouTube.
         
@@ -62,13 +83,18 @@ class DownloadManager:
             quality (str): Quality setting
             index (int): Current download index
             total (int): Total downloads in queue
+            cancel_event (threading.Event): When set, the download is aborted
+            
+        Raises:
+            DownloadCancelled: If cancel_event was set during the download
         """
         download_dir = config.get_download_dir(format_type)
         os.makedirs(download_dir, exist_ok=True)
         
+        ydl_opts = self._base_options()
         if format_type == "audio":
-            ydl_opts = {
-                "format": f"bestaudio[abr<={quality}]/best",
+            ydl_opts.update({
+                "format": f"bestaudio[abr<={quality}]/bestaudio/best",
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -78,19 +104,30 @@ class DownloadManager:
                 ],
                 "outtmpl": os.path.join(download_dir, "%(title)s.%(ext)s"),
                 "ffmpeg_location": self.ffmpeg_dir,
-            }
+            })
         else:
-            ydl_opts = {
-                "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]",
+            ydl_opts.update({
+                "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
+                # Prefer H.264/AAC streams so the merged MP4 plays everywhere
+                "format_sort": [f"res:{quality}", "vcodec:h264", "acodec:aac"],
                 "outtmpl": os.path.join(download_dir, "%(title)s.%(ext)s"),
                 "ffmpeg_location": self.ffmpeg_dir,
                 "merge_output_format": "mp4",
-            }
+            })
+        
+        def check_cancelled():
+            if cancel_event is not None and cancel_event.is_set():
+                raise DownloadCancelled()
         
         def progress_hook(data):
+            check_cancelled()
             self._handle_progress(data, url, index, total)
         
+        def postprocessor_hook(data):
+            check_cancelled()
+        
         ydl_opts["progress_hooks"] = [progress_hook]
+        ydl_opts["postprocessor_hooks"] = [postprocessor_hook]
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -146,6 +183,7 @@ class DownloadQueue:
         self.download_manager = download_manager
         self.queue = []  # list of dicts: url, item_id, status, title
         self.is_downloading = False
+        self.cancel_event = threading.Event()
         self.status_callback = None
         self.completion_callback = None
     
@@ -210,6 +248,7 @@ class DownloadQueue:
             return
         
         self.is_downloading = True
+        self.cancel_event.clear()
         
         worker = threading.Thread(
             target=self._process_downloads,
@@ -225,6 +264,9 @@ class DownloadQueue:
         completed = []
         
         for index, entry in enumerate(entries, start=1):
+            if self.cancel_event.is_set():
+                # Items not started yet stay Pending so they can be resumed later
+                break
             url = entry["url"]
             
             # Update status to downloading
@@ -233,9 +275,13 @@ class DownloadQueue:
                 self.status_callback("status_changed", entry)
             
             try:
-                self.download_manager.download_video(url, format_type, quality, index, total)
+                self.download_manager.download_video(
+                    url, format_type, quality, index, total, cancel_event=self.cancel_event
+                )
                 completed.append(url)
                 entry["status"] = "Completed"
+            except DownloadCancelled:
+                entry["status"] = "Cancelled"
             except Exception as error:
                 errors.append((url, str(error)))
                 entry["status"] = "Failed"
@@ -245,10 +291,34 @@ class DownloadQueue:
                 self.status_callback("status_changed", entry)
         
         self.is_downloading = False
+        cancelled = self.cancel_event.is_set()
         
         # Notify completion
         if self.completion_callback:
-            self.completion_callback(format_type, errors, completed)
+            self.completion_callback(format_type, errors, completed, cancelled)
+    
+    def cancel(self):
+        """Stop the current download and skip the remaining items."""
+        if self.is_downloading:
+            self.cancel_event.set()
+    
+    def retry_failed(self):
+        """
+        Reset failed and cancelled items back to Pending.
+        
+        Returns:
+            int: Number of items reset
+        """
+        if self.is_downloading:
+            return 0
+        count = 0
+        for entry in self.queue:
+            if entry["status"] in ("Failed", "Cancelled"):
+                entry["status"] = "Pending"
+                count += 1
+                if self.status_callback:
+                    self.status_callback("status_changed", entry)
+        return count
     
     def get_pending_count(self):
         """Get the number of pending items."""
@@ -256,7 +326,7 @@ class DownloadQueue:
     
     def get_status_counts(self):
         """Get counts for each status."""
-        counts = {"Pending": 0, "Downloading": 0, "Completed": 0, "Failed": 0}
+        counts = {"Pending": 0, "Downloading": 0, "Completed": 0, "Failed": 0, "Cancelled": 0}
         for entry in self.queue:
             status = entry.get("status", "Pending")
             counts[status] += 1
