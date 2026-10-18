@@ -81,10 +81,12 @@ The ignored tests drive the real yt-dlp binary against a local HTTP server (prog
 ### Releasing
 
 1. Update `version` in `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml` and `desktop/package.json`, and add a `CHANGELOG.md` entry
-2. Tag and push: `git tag v2.0.0 && git push origin v2.0.0`
-3. The **Release (2.x desktop)** workflow builds the Windows, macOS and Linux installers, then publishes the release with `SHA256SUMS.txt` and the `version.json` that *Check for app update* reads
+2. Start the **Release (2.x desktop)** workflow, either way:
+   - *Actions → Release (2.x desktop) → Run workflow* on `main` (the tag `v<version>` is created when the release is published), or
+   - push a tag: `git tag v2.0.0 && git push origin v2.0.0`
+3. The workflow builds the Windows, macOS and Linux installers, then publishes the release with `SHA256SUMS.txt` and the `version.json` that *Check for app update* reads
 
-The workflow stops if the tag does not match the version in `tauri.conf.json`.
+A pushed tag must match the version in `tauri.conf.json`, and an already published version is never overwritten. Don't create the release by hand on GitHub; the workflow creates it (and reuses its own draft if a run is restarted).
 
 ## StreamQ 1.x (Python, legacy)
 
