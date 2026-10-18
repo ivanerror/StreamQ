@@ -1,13 +1,17 @@
 name: Release (2.x desktop)
 
-# Push a tag like v2.0.0 to build StreamQ 2 for Windows (NSIS + MSI), macOS
-# (universal .app/.dmg) and Linux (AppImage + deb) and publish a GitHub Release.
+# Builds StreamQ 2 for Windows (NSIS + MSI), macOS (universal .app/.dmg) and
+# Linux (AppImage + deb) and publishes a GitHub Release. Start it either way:
+#   - push a tag like v2.0.0 (must match the version in tauri.conf.json), or
+#   - Actions → "Release (2.x desktop)" → Run workflow on main: the tag is taken
+#     from tauri.conf.json and created when the release is published.
 # Installers do not contain yt-dlp, FFmpeg or Deno: the app downloads them on
 # first launch, which keeps every download small.
 on:
   push:
     tags:
       - 'v2.*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,26 +19,45 @@ permissions:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     outputs:
       release_id: ${{ steps.create.outputs.release_id }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check tag matches app version
+      - name: Determine release tag
+        id: version
         run: |
           version=$(jq -r .version desktop/src-tauri/tauri.conf.json)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          tag="v$version"
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$tag" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match tauri.conf.json version ($version)"
             exit 1
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Create draft release
+      - name: Create draft release (or reuse an existing draft)
         id: create
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --generate-notes --title "StreamQ ${GITHUB_REF_NAME#v}"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -1)
+          # Drafts have no tag yet, so look them up in the release list rather than by tag
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.id) \(.draft)\"")
+          existing=${existing%%$'\n'*}
+          if [ -n "$existing" ]; then
+            read -r id draft <<< "$existing"
+            if [ "$draft" != "true" ]; then
+              echo "::error::$TAG is already published; bump the version in tauri.conf.json"
+              exit 1
+            fi
+          else
+            id=$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="StreamQ ${TAG#v}" \
+              -F draft=true -F generate_release_notes=true --jq .id)
+          fi
           echo "release_id=$id" >> "$GITHUB_OUTPUT"
 
   build:
@@ -98,13 +121,24 @@ jobs:
       - name: Add checksums and version.json, then publish
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          ID: ${{ needs.create-release.outputs.release_id }}
+          TAG: ${{ needs.create-release.outputs.tag }}
         run: |
+          api="repos/$GITHUB_REPOSITORY/releases"
           mkdir assets && cd assets
-          gh release download "$GITHUB_REF_NAME" --pattern '*'
+          # Work by release id: a draft cannot be looked up by its tag yet
+          gh api "$api/$ID/assets" --paginate --jq '.[] | "\(.id) \(.name)"' |
+            while read -r asset name; do
+              gh api -H "Accept: application/octet-stream" "$api/assets/$asset" > "$name"
+            done
+          ls -la
           sha256sum * > SHA256SUMS.txt
           # Read by "Check for app update" in StreamQ's settings
           printf '{"version":"%s","url":"https://github.com/%s/releases/tag/%s"}\n' \
-            "${GITHUB_REF_NAME#v}" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > version.json
-          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt version.json --clobber
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+            "${TAG#v}" "$GITHUB_REPOSITORY" "$TAG" > version.json
+          for file in SHA256SUMS.txt version.json; do
+            gh api --method POST -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/$api/$ID/assets?name=$file" --input "$file" --jq .name
+          done
+          # Publishing creates the tag on the commit the release targets
+          gh api --method PATCH "$api/$ID" -F draft=false -f make_latest=true --jq .html_url
