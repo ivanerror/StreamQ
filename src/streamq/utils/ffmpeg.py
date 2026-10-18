@@ -6,7 +6,6 @@ import urllib.request
 import zipfile
 import shutil
 import stat
-import sys
 import tarfile
 from urllib.error import URLError
 
@@ -71,15 +70,6 @@ def extract_binaries(archive_path, required, bin_dir):
         raise RuntimeError("Arsip FFmpeg rusak atau tidak valid.") from error
 
 
-def get_bundled_ffmpeg_dir():
-    """Get the FFmpeg directory shipped inside a release build, if any."""
-    # Release builds bundle FFmpeg next to the PyInstaller data (sys._MEIPASS)
-    bundle_dir = getattr(sys, "_MEIPASS", None)
-    if not bundle_dir:
-        return None
-    return os.path.join(bundle_dir, "ffmpeg")
-
-
 def prepend_to_path(path):
     """Add a path to the beginning of the system PATH environment variable."""
     current = os.environ.get("PATH", "")
@@ -106,13 +96,11 @@ def ensure_ffmpeg():
     ffmpeg_binary = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
     ffprobe_binary = "ffprobe.exe" if os.name == "nt" else "ffprobe"
 
-    bundled_dir = get_bundled_ffmpeg_dir()
-    for candidate in filter(None, (bundled_dir, bin_dir)):
-        if os.path.isfile(os.path.join(candidate, ffmpeg_binary)) and os.path.isfile(
-            os.path.join(candidate, ffprobe_binary)
-        ):
-            prepend_to_path(candidate)
-            return candidate
+    if os.path.isfile(os.path.join(bin_dir, ffmpeg_binary)) and os.path.isfile(
+        os.path.join(bin_dir, ffprobe_binary)
+    ):
+        prepend_to_path(bin_dir)
+        return bin_dir
 
     # Fall back to a system-wide FFmpeg installation (e.g. apt, brew, winget)
     search_path = os.pathsep.join([os.environ.get("PATH", ""), *EXTRA_SEARCH_DIRS])

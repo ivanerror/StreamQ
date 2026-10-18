@@ -5,6 +5,32 @@ All notable changes to StreamQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-18
+
+StreamQ rebuilt with Tauri 2 (`desktop/`), following the architecture decision record
+reviewed in the StreamQ Modernization design canvas. The Python 1.x app stays in the
+repository as the legacy version.
+
+### Added
+- New light-only interface (React + TypeScript): sidebar with Queue / Completed / Failed,
+  rich queue rows with thumbnails, inline progress, speed and time left, Settings screen
+- Format and quality per item (MP4 up to 2160p, MP3 up to 320 kbps)
+- 1–3 parallel downloads; Pause all / Resume all, Cancel all, Retry all
+- Queue saved to disk and restored on start (interrupted downloads resume)
+- Playlists: download whole into a folder, or expand into separate items
+- Paste anywhere (Ctrl/⌘+V), drag-and-drop links, optional clipboard suggestions
+- "View log" with yt-dlp's full output for failed downloads; readable error messages
+- Desktop notification when a download finishes while StreamQ is in the background
+- Automatic yt-dlp updates (SHA-256 verified) plus "Check now", and "Check for app update"
+- Licenses & notices screen
+
+### Changed
+- yt-dlp now runs as its official standalone binary; Python is no longer shipped
+- yt-dlp, FFmpeg and Deno are downloaded on first launch (with progress) instead of being
+  bundled, so installers stay small; system-installed FFmpeg/Deno are used when present
+- Cancel stops yt-dlp together with the processes it started (process group / Job Object)
+- Installers: NSIS + MSI (Windows, per-user), universal .app/.dmg (macOS), AppImage + deb (Linux)
+
 ## [1.1.0] - 2026-10-18
 
 ### Added
@@ -12,8 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (installer), `StreamQ-windows-x64-portable.zip`, `StreamQ-macos-arm64.zip` and
   `StreamQ-linux-x64.tar.gz` (plus `SHA256SUMS.txt`) and publishes them as a GitHub
   Release when a `v*` tag is pushed
-- **FFmpeg is bundled** in every release package (`scripts/fetch_ffmpeg.py`), so no
-  FFmpeg setup or first-run download is needed
+- FFmpeg is **not** bundled, to keep downloads small: it is downloaded automatically
+  on first launch (Windows/Linux) or taken from the system `PATH`/Homebrew
 - **Cancel** button to stop the running download; the current item becomes *Cancelled*
   and the remaining items stay *Pending*
 - **Retry Failed** button to re-queue failed/cancelled items (partial downloads resume)

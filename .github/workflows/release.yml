@@ -1,11 +1,12 @@
-name: Release
+name: Release (1.x Python)
 
-# Push a tag like v1.2.0 to build StreamQ for Windows, macOS and Linux and
-# publish the files as a GitHub Release. Run manually to only build artifacts.
+# Push a tag like v1.1.0 to build the Python 1.x app for Windows, macOS and
+# Linux and publish it as a GitHub Release. FFmpeg is not bundled; the app
+# downloads it on first launch. Run manually to only build artifacts.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v1.*'
   workflow_dispatch:
 
 permissions:
@@ -53,21 +54,8 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-      - name: Download FFmpeg to bundle
-        run: python scripts/fetch_ffmpeg.py
-
       - name: Build
         run: pyinstaller --noconfirm --clean StreamQ.spec
-
-      - name: Check bundled FFmpeg runs
-        shell: bash
-        run: |
-          for name in ffmpeg ffprobe; do
-            bin=$(find dist -type f \( -path "*/ffmpeg/$name" -o -path "*/ffmpeg/$name.exe" \) | head -1)
-            if [ -z "$bin" ]; then echo "::error::$name missing from build"; exit 1; fi
-            # Write to a file first: piping into head can SIGPIPE under pipefail
-            "$bin" -version > version.txt && head -1 version.txt
-          done
 
       - name: Package (Windows)
         if: runner.os == 'Windows'

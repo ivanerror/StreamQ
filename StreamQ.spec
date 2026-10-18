@@ -1,8 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Build with: pyinstaller --noconfirm --clean StreamQ.spec
 # Output: dist/StreamQ/ (Windows/Linux folder) or dist/StreamQ.app (macOS).
-# Run scripts/fetch_ffmpeg.py first to bundle FFmpeg; without it the app
-# falls back to a system FFmpeg or downloads one on first run.
+# FFmpeg is not bundled: the app uses a system FFmpeg or downloads one on first run.
 import os
 import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
@@ -18,18 +17,6 @@ for package in ('yt_dlp', 'yt_dlp_ejs', 'ttkbootstrap'):
     datas += pkg_datas
     binaries += pkg_binaries
     hiddenimports += pkg_hiddenimports
-
-# Bundled FFmpeg lands in <bundle>/ffmpeg, where streamq.utils.ffmpeg looks first
-ffmpeg_dir = os.path.join(root, 'vendor', 'ffmpeg')
-if os.path.isdir(ffmpeg_dir):
-    for name in sorted(os.listdir(ffmpeg_dir)):
-        path = os.path.join(ffmpeg_dir, name)
-        if name.endswith('.txt'):
-            datas.append((path, 'ffmpeg'))
-        else:
-            binaries.append((path, 'ffmpeg'))
-else:
-    print('WARNING: vendor/ffmpeg not found; building without bundled FFmpeg')
 
 icon = [os.path.join(root, 'assets', 'streamq.ico')]
 
@@ -48,7 +35,7 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-# One-folder build: starts fast because nothing (FFmpeg included) is unpacked on launch
+# One-folder build: starts fast because nothing is unpacked on launch
 exe = EXE(
     pyz,
     a.scripts,

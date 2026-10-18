@@ -16,8 +16,6 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install pyinstaller
 
-rem Bundle FFmpeg so the build works without any setup
-python scripts\fetch_ffmpeg.py
 pyinstaller --noconfirm --clean StreamQ.spec
 
 echo.

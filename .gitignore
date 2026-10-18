@@ -216,5 +216,3 @@ secrets.json
 # Bundled JavaScript runtime (Deno)
 js_runtime/
 
-# FFmpeg downloaded for release builds (scripts/fetch_ffmpeg.py)
-vendor/

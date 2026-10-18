@@ -1,239 +1,113 @@
 # StreamQ
 
-StreamQ is a modern desktop application for queuing and downloading video/audio from YouTube using `yt-dlp`, wrapped in a clean Tkinter-based GUI. The application follows Python best practices with a modular architecture for maintainability and extensibility. The UI uses ttkbootstrap for a polished, modern look.
+StreamQ is a desktop app for queuing and downloading YouTube video (MP4) and audio (MP3). Version 2 is built with [Tauri 2](https://tauri.app): a Rust core drives the official [yt-dlp](https://github.com/yt-dlp/yt-dlp) binary, and a React interface gives it a clean, light design.
 
 ## Features
 
-- Modern GUI with ttkbootstrap (Bootstrap-like themes)
-- Queue multiple YouTube downloads
-- Audio downloads (MP3) and Video downloads (MP4)
-- Video quality up to 2160p (4K) and 1440p (2K)
-- Cancel a running download; retry failed or cancelled items with one click
-- Automatic FFmpeg setup on Windows and Linux (uses a system FFmpeg from `PATH` when available)
-- Automatic JavaScript runtime (Deno) setup, required by yt-dlp for full YouTube support
-- Real-time progress (percentage + speed; ETA hidden for cleaner status)
-- Background title fetching for queued items
-- Single queue table view: columns Status | Link | Title
-- Auto-open download folder on completion
-- Windows launcher opens without console by default
+- Queue many links at once: paste into the field, press Ctrl/⌘+V anywhere, or drop a link onto the window
+- MP4 video up to 2160p (4K) or MP3 audio up to 320 kbps, chosen per item
+- 1–3 parallel downloads with live progress, speed and time left
+- Pause, resume, cancel and retry; cancelled downloads keep their partial file
+- Playlists can be downloaded whole or expanded into separate items
+- The queue is saved, so it survives restarting the app
+- Failed downloads show a readable reason plus the full yt-dlp log
+- yt-dlp updates itself automatically, so YouTube changes are fixed without reinstalling StreamQ
+- Native installers and a desktop notification when downloads finish
 
-## Download (no setup needed)
+## Download
 
-Grab the latest build from the [Releases page](https://github.com/ivanerror/streamq/releases/latest):
+Get the latest version from the [Releases page](https://github.com/ivanerror/streamq/releases/latest):
 
-| Platform | File | How to run |
+| Platform | File | Notes |
 | --- | --- | --- |
-| Windows 10/11 (x64) | `StreamQ-Setup-windows-x64.exe` | Run the installer (no admin rights needed); start StreamQ from the Start menu. If SmartScreen warns, click *More info* → *Run anyway* (the build is unsigned). |
-| Windows, portable | `StreamQ-windows-x64-portable.zip` | Extract anywhere and run `StreamQ\StreamQ.exe`. |
-| macOS (Apple Silicon) | `StreamQ-macos-arm64.zip` | Unzip, then right-click `StreamQ.app` → *Open* the first time (unsigned app). |
-| Linux (x64) | `StreamQ-linux-x64.tar.gz` | `tar -xzf StreamQ-linux-x64.tar.gz && ./StreamQ/StreamQ` |
+| Windows 10/11 | `StreamQ_<version>_x64-setup.exe` (or `.msi`) | Installs for the current user, no admin rights needed. The build is unsigned: if SmartScreen warns, choose *More info* → *Run anyway*. |
+| macOS 11+ (Intel and Apple Silicon) | `StreamQ_<version>_universal.dmg` | Unsigned: right-click `StreamQ.app` → *Open* the first time. |
+| Linux | `StreamQ_<version>_amd64.AppImage` or `.deb` | AppImage: `chmod +x` and run. Debian/Ubuntu: `sudo apt install ./StreamQ_<version>_amd64.deb`. |
 
-FFmpeg is included in every package. On first launch StreamQ only downloads the small Deno JavaScript runtime in the background; the *Start Download* button becomes available once it is ready. App data and downloads are stored in `~/StreamQ/` (`%USERPROFILE%\StreamQ\` on Windows).
+Installers stay small (the Linux `.deb` is about 4 MB) because they contain only StreamQ itself. On first launch StreamQ downloads the tools it needs and shows their progress:
 
-## Run from Source
+| Tool | Purpose | Source | Approx. size |
+| --- | --- | --- | --- |
+| yt-dlp | Download engine | [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases), SHA-256 verified | 18–40 MB |
+| FFmpeg + FFprobe | Merge video/audio, convert to MP3 | [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) (Windows, Linux, SHA-256 verified), [martin-riedl.de](https://ffmpeg.martin-riedl.de) (macOS) | 90–160 MB |
+| Deno | Solves YouTube's JavaScript checks | [Deno releases](https://github.com/denoland/deno/releases), SHA-256 verified | ~45 MB |
 
-### Prerequisites
+FFmpeg or Deno already installed on the system (for example with `apt`, `brew` or `winget`) is used instead of downloading. You can add links while setup runs; downloads start once it finishes.
 
-- Python 3.10+ installed (required by current yt-dlp)
-- Windows 10/11 recommended; macOS/Linux supported
-- Internet connection (for dependencies and FFmpeg download)
+### Where files go
 
-### Quick Start
-
-#### Option 1: Windows Convenience Script
-
-The easiest way to start on Windows:
-
-1. Double-click `run.bat` from File Explorer (opens GUI without console), or run in a terminal:
-   ```bat
-   run.bat
-   ```
-2. The script automatically:
-   - Creates a virtual environment at `.venv/`
-   - Installs dependencies from `requirements.txt` only when it changes (cached via SHA-256)
-   - Launches the StreamQ GUI using `pythonw` (no console window)
-
-Flags:
-- `--console` run with a terminal window and logs
-- `--update` force re-install dependencies (refresh the cache)
-
-#### Option 2: Manual Installation (All Platforms)
-
-```bash
-# Create and activate virtual environment
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS/Linux
-source .venv/bin/activate
-
-# Install dependencies
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-
-# Run the application
-python main.py
-```
-
-#### Option 3: Install as a Package
-
-```bash
-# Install in development mode
-pip install -e .
-
-# Or install from source
-pip install .
-
-# Run from anywhere (console)
-streamq
-
-# Or launch without console (GUI script on Windows)
-streamq-gui
-```
-
-## Build Executables
-
-All platforms use the same PyInstaller spec:
-
-```bash
-pip install -r requirements.txt pyinstaller
-python scripts/fetch_ffmpeg.py        # downloads FFmpeg into vendor/ffmpeg to bundle it
-pyinstaller --noconfirm --clean StreamQ.spec
-```
-
-Output: `dist/StreamQ/` folder (Windows/Linux, run `StreamQ.exe` / `StreamQ`) or `dist/StreamQ.app` (macOS). Without `fetch_ffmpeg.py` the build still works but falls back to a system FFmpeg or a first-run download. On Windows you can also run `scripts\build_exe.bat`; build the installer with [Inno Setup](https://jrsoftware.org/isinfo.php): `iscc /DAppVersion=1.1.0 installer\streamq.iss`.
-
-Bundled FFmpeg builds are GPL-licensed, from [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) (Windows/Linux) and [martin-riedl.de](https://ffmpeg.martin-riedl.de) (macOS); the license and source information ship in the package's `ffmpeg/` folder.
-
-### Publishing a Release
-
-1. Bump `__version__` in `src/streamq/__init__.py` (and `version` in `pyproject.toml`/`setup.py`), update `CHANGELOG.md`
-2. Tag and push: `git tag v1.2.0 && git push origin v1.2.0`
-3. The **Release** workflow runs the tests, bundles FFmpeg, builds the Windows installer + portable zip, macOS app and Linux package, and publishes them with `SHA256SUMS.txt` on the Releases page
-
-The workflow fails if the tag does not match `__version__`. Running it manually (*Actions → Release → Run workflow*) only builds downloadable artifacts.
-
-## Usage
-
-1. Launch StreamQ
-2. Paste a YouTube URL and click “Add to Queue”
-3. Choose Audio (MP3) or Video (MP4)
-4. Select quality
-5. Click “Start Download”
-6. Click “Cancel” to stop; the current item becomes *Cancelled* and the rest stay *Pending*
-7. Click “Retry Failed” to re-queue failed/cancelled items (partial downloads are resumed)
-
-Queue display (single table):
-- `Status`: Pending / Downloading / Completed / Failed / Cancelled
-- `Link`: The original URL you added
-- `Title`: Fetched automatically in the background
-
-### Output Locations
-
-- Audio files: `Output/audio/`
-- Video files: `Output/video/`
-- FFmpeg binaries (Windows/Linux auto-download): `ffmpeg_support/`
-- Deno JavaScript runtime (when not found in `PATH`): `js_runtime/`
-
-## Project Structure
-
-```
-src/
-  streamq/
-    __init__.py
-    __main__.py        # Module entry point
-    config.py          # Configuration management
-    utils/
-      __init__.py
-      ffmpeg.py        # FFmpeg handling utilities
-      jsruntime.py     # JavaScript runtime (Deno) detection/download
-    core/
-      __init__.py
-      app.py           # Main GUI application
-      downloader.py    # Download logic & queue management
-
-main.py               # Standalone entry point script
-pyproject.toml        # Packaging configuration
-setup.py              # Legacy/fallback setup
-requirements.txt      # Python dependencies
-run.bat               # Windows launcher
-run.sh                # Linux/macOS helper
-LICENSE
-README.md
-```
-
-## Platform Notes
-
-### Windows
-- FFmpeg is automatically downloaded and configured on first run
-- ttkbootstrap theme enabled by default (changeable in `main.py` or `src/streamq/__main__.py`)
-- `run.bat` launches without console by default; use `--console` for logs
-
-### All platforms
-- Deno is downloaded automatically if no JavaScript runtime (deno, node, quickjs, bun) is in `PATH`
-
-### Linux
-- FFmpeg from `PATH` is used if installed (`sudo apt install ffmpeg`); otherwise a static build is downloaded on first run (x64/arm64)
-
-### macOS
-- Release builds include FFmpeg; when running from source, install it with `brew install ffmpeg` (Homebrew locations are detected even when launched from Finder)
+- Downloads: your `Downloads/StreamQ` folder (change it in *Settings*)
+- Queue and settings: the app data folder (`%APPDATA%\io.github.ivanerror.streamq` on Windows, `~/Library/Application Support/io.github.ivanerror.streamq` on macOS, `~/.local/share/io.github.ivanerror.streamq` on Linux)
+- Downloaded tools: the `components` folder in the app's local data folder
 
 ## Development
 
-```bash
-# Clone the repository
-git clone https://github.com/ivanerror/streamq.git
-cd streamq
+The app lives in [`desktop/`](desktop):
 
-# Install in development mode with optional dev tools
-pip install -e .[dev]
-
-# Or manually install dev dependencies
-pip install pytest black isort flake8 mypy
+```
+desktop/
+  src/                 React + TypeScript UI (Vite)
+  src-tauri/
+    src/components.rs  First-launch download, verification and updates of yt-dlp, FFmpeg, Deno
+    src/engine.rs      yt-dlp command line, JSON progress parsing, process-tree cancel
+    src/queue.rs       Queue items, state transitions, persistence
+    src/app.rs         Parallel scheduler, events to the UI, notifications
+    src/settings.rs    Settings and their validation
+    src/lib.rs         Tauri commands and startup
 ```
 
-### Running Tests
+Prerequisites: Node.js 22+, Rust (stable) and the [Tauri system dependencies](https://tauri.app/start/prerequisites/) for your OS (on Linux: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`, `libxdo-dev`).
 
 ```bash
-pytest
-pytest --cov=streamq
+cd desktop
+npm install
+npm run tauri dev        # run with hot reload
+npm run tauri build      # build installers for this OS into src-tauri/target/release/bundle
 ```
 
-### Code Quality
+### Tests
 
 ```bash
-black src/
-isort src/
-flake8 src/
-mypy src/
+cd desktop
+npm run typecheck && npm test           # UI types and helpers
+cd src-tauri
+cargo test                              # Rust unit tests
+cargo test -- --ignored installs_all_components   # real first-launch downloads (~200 MB)
+STREAMQ_YTDLP=/path/to/yt-dlp cargo test integration_tests -- --ignored --skip installs_all_components
 ```
+
+The ignored tests drive the real yt-dlp binary against a local HTTP server (progress, cancel, errors) and install every component exactly like a first launch. The **Desktop (Tauri)** workflow runs all of them on Windows, macOS and Linux.
+
+### Releasing
+
+1. Update `version` in `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml` and `desktop/package.json`, and add a `CHANGELOG.md` entry
+2. Tag and push: `git tag v2.0.0 && git push origin v2.0.0`
+3. The **Release (2.x desktop)** workflow builds the Windows, macOS and Linux installers, then publishes the release with `SHA256SUMS.txt` and the `version.json` that *Check for app update* reads
+
+The workflow stops if the tag does not match the version in `tauri.conf.json`.
+
+## StreamQ 1.x (Python, legacy)
+
+The original Tkinter app is still in this repository (`src/streamq`, `main.py`) and keeps working until 2.x has replaced it everywhere. It needs Python 3.10+:
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+On Windows, `run.bat` creates the virtual environment and starts the app without a console (`--console` shows logs, `--update` reinstalls dependencies). Run its tests with `pytest`.
+
+1.x release builds use PyInstaller (`pyinstaller --noconfirm --clean StreamQ.spec`, or `scripts\build_exe.bat` plus `iscc /DAppVersion=1.1.0 installer\streamq.iss` for the Windows installer). Pushing a `v1.*` tag runs the **Release (1.x Python)** workflow. FFmpeg is not bundled in 1.x either: it is downloaded on first launch on Windows and Linux, and taken from Homebrew on macOS (`brew install ffmpeg`).
 
 ## Troubleshooting
 
-**No GUI or errors at startup**
-- Ensure you are using Python 3.10+
-- Activate the virtual environment
-- Use `run.bat --console` to see logs
+**Setup could not finish** — check the internet connection and click *Try again*. Corporate networks may block GitHub downloads; installing FFmpeg and Deno system-wide lets StreamQ skip them.
 
-**Dependency installation failed**
-- Check internet connection
-- `python -m pip install --upgrade pip`
-- `run.bat --update`
+**A YouTube download fails** — open *Settings → Download engine → Check now* to get the newest yt-dlp, then retry. *View log* on the failed item shows yt-dlp's full output.
 
-**FFmpeg missing (macOS/Linux)**
-- Install FFmpeg and ensure it is in `PATH`
-
-**Download failed**
-- Verify YouTube URL
-- Update yt-dlp: `pip install -U "yt-dlp[default]"` (or `run.bat --update`)
-- YouTube formats missing / "n challenge" or "JS runtime" warnings: make sure Deno is installed or let StreamQ download it into `js_runtime/`
+**macOS says the app is damaged or from an unidentified developer** — the build is not notarized; right-click the app and choose *Open*, or run `xattr -dr com.apple.quarantine /Applications/StreamQ.app`.
 
 ## License
 
-MIT License. See `LICENSE` for details.
-
----
-
-StreamQ — Simple, reliable YouTube downloading with a modern Python architecture.
+StreamQ is MIT licensed (see `LICENSE`). yt-dlp (Unlicense), FFmpeg (GPL) and Deno (MIT) are separate programs downloaded from their publishers; see *Settings → Licenses & notices*.

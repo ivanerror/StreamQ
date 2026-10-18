@@ -1,0 +1,110 @@
+name: Release (2.x desktop)
+
+# Push a tag like v2.0.0 to build StreamQ 2 for Windows (NSIS + MSI), macOS
+# (universal .app/.dmg) and Linux (AppImage + deb) and publish a GitHub Release.
+# Installers do not contain yt-dlp, FFmpeg or Deno: the app downloads them on
+# first launch, which keeps every download small.
+on:
+  push:
+    tags:
+      - 'v2.*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches app version
+        run: |
+          version=$(jq -r .version desktop/src-tauri/tauri.conf.json)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match tauri.conf.json version ($version)"
+            exit 1
+          fi
+
+      - name: Create draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --generate-notes --title "StreamQ ${GITHUB_REF_NAME#v}"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -1)
+          echo "release_id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: create-release
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            args: ''
+          - name: macos-universal
+            os: macos-latest
+            args: '--target universal-apple-darwin'
+          # Older glibc keeps the Linux builds compatible with more distributions
+          - name: linux
+            os: ubuntu-22.04
+            args: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build and upload installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          projectPath: desktop
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+  publish:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add checksums and version.json, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir assets && cd assets
+          gh release download "$GITHUB_REF_NAME" --pattern '*'
+          sha256sum * > SHA256SUMS.txt
+          # Read by "Check for app update" in StreamQ's settings
+          printf '{"version":"%s","url":"https://github.com/%s/releases/tag/%s"}\n' \
+            "${GITHUB_REF_NAME#v}" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > version.json
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt version.json --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
