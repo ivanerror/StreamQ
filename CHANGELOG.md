@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-10-18
 
 ### Added
-- **Ready-to-run downloads**: a Release workflow builds `StreamQ-windows-x64.exe`,
-  `StreamQ-macos-arm64.zip` and `StreamQ-linux-x64.tar.gz` (plus `SHA256SUMS.txt`)
-  and publishes them as a GitHub Release when a `v*` tag is pushed
+- **Ready-to-run downloads**: a Release workflow builds `StreamQ-Setup-windows-x64.exe`
+  (installer), `StreamQ-windows-x64-portable.zip`, `StreamQ-macos-arm64.zip` and
+  `StreamQ-linux-x64.tar.gz` (plus `SHA256SUMS.txt`) and publishes them as a GitHub
+  Release when a `v*` tag is pushed
+- **FFmpeg is bundled** in every release package (`scripts/fetch_ffmpeg.py`), so no
+  FFmpeg setup or first-run download is needed
 - **Cancel** button to stop the running download; the current item becomes *Cancelled*
   and the remaining items stay *Pending*
 - **Retry Failed** button to re-queue failed/cancelled items (partial downloads resume)
@@ -39,7 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `streamq.StreamQApp` is imported lazily so core modules work without tkinter
 - Removed committed `streamq.egg-info` build metadata
 - One PyInstaller spec (`StreamQ.spec`) is used by CI and `scripts/build_exe.bat`;
-  Windows/Linux builds are single-file executables without UPX (fewer antivirus false positives)
+  builds are one-folder (fast start-up, nothing unpacked per launch) and skip UPX
+  (fewer antivirus false positives)
 - Replaced the Windows-only build workflow with the cross-platform Release workflow
 
 ## [1.0.0] - 2025-01-05

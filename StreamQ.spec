@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Build with: pyinstaller --noconfirm --clean StreamQ.spec
-# Windows/Linux: single-file executable in dist/; macOS: dist/StreamQ.app
+# Output: dist/StreamQ/ (Windows/Linux folder) or dist/StreamQ.app (macOS).
+# Run scripts/fetch_ffmpeg.py first to bundle FFmpeg; without it the app
+# falls back to a system FFmpeg or downloads one on first run.
 import os
 import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
@@ -17,8 +19,19 @@ for package in ('yt_dlp', 'yt_dlp_ejs', 'ttkbootstrap'):
     binaries += pkg_binaries
     hiddenimports += pkg_hiddenimports
 
+# Bundled FFmpeg lands in <bundle>/ffmpeg, where streamq.utils.ffmpeg looks first
+ffmpeg_dir = os.path.join(root, 'vendor', 'ffmpeg')
+if os.path.isdir(ffmpeg_dir):
+    for name in sorted(os.listdir(ffmpeg_dir)):
+        path = os.path.join(ffmpeg_dir, name)
+        if name.endswith('.txt'):
+            datas.append((path, 'ffmpeg'))
+        else:
+            binaries.append((path, 'ffmpeg'))
+else:
+    print('WARNING: vendor/ffmpeg not found; building without bundled FFmpeg')
+
 icon = [os.path.join(root, 'assets', 'streamq.ico')]
-is_mac = sys.platform == 'darwin'
 
 a = Analysis(
     [os.path.join(root, 'scripts', 'pyinstaller_entry.py')],
@@ -35,45 +48,33 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-if is_mac:
-    exe = EXE(
-        pyz,
-        a.scripts,
-        [],
-        exclude_binaries=True,
-        name='StreamQ',
-        console=False,
-        upx=False,
-        argv_emulation=False,
-        icon=icon,
-    )
-    coll = COLLECT(exe, a.binaries, a.datas, name='StreamQ', upx=False)
+# One-folder build: starts fast because nothing (FFmpeg included) is unpacked on launch
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='StreamQ',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    # UPX-packed executables trigger more antivirus false positives
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=icon,
+)
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='StreamQ')
+
+if sys.platform == 'darwin':
     app = BUNDLE(
         coll,
         name='StreamQ.app',
         icon=icon,
         bundle_identifier='io.github.ivanerror.streamq',
         info_plist={'NSHighResolutionCapable': True},
-    )
-else:
-    exe = EXE(
-        pyz,
-        a.scripts,
-        a.binaries,
-        a.datas,
-        [],
-        name='StreamQ',
-        debug=False,
-        bootloader_ignore_signals=False,
-        strip=False,
-        # UPX-packed executables trigger more antivirus false positives
-        upx=False,
-        runtime_tmpdir=None,
-        console=False,
-        disable_windowed_traceback=False,
-        argv_emulation=False,
-        target_arch=None,
-        codesign_identity=None,
-        entitlements_file=None,
-        icon=icon,
     )

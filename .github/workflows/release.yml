@@ -53,15 +53,35 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+      - name: Download FFmpeg to bundle
+        run: python scripts/fetch_ffmpeg.py
+
       - name: Build
         run: pyinstaller --noconfirm --clean StreamQ.spec
 
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
+      - name: Check bundled FFmpeg runs
         shell: bash
         run: |
-          mkdir release
-          mv dist/StreamQ.exe "release/StreamQ-${{ matrix.name }}.exe"
+          for name in ffmpeg ffprobe; do
+            bin=$(find dist -type f \( -path "*/ffmpeg/$name" -o -path "*/ffmpeg/$name.exe" \) | head -1)
+            if [ -z "$bin" ]; then echo "::error::$name missing from build"; exit 1; fi
+            # Write to a file first: piping into head can SIGPIPE under pipefail
+            "$bin" -version > version.txt && head -1 version.txt
+          done
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          7z a -tzip "release/StreamQ-${{ matrix.name }}-portable.zip" ./dist/StreamQ
+          $env:PYTHONPATH = "src"
+          $version = python -c "import streamq; print(streamq.__version__)"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          & $iscc "/DAppVersion=$version" installer\streamq.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Move-Item dist/installer/StreamQ-Setup-windows-x64.exe release/
 
       - name: Package (macOS)
         if: runner.os == 'macOS'

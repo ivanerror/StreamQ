@@ -64,3 +64,17 @@ def test_extract_binaries_from_tar_xz(tmp_path):
     assert sorted(os.listdir(bin_dir)) == ["ffmpeg", "ffprobe"]
     if os.name != "nt":
         assert os.access(bin_dir / "ffmpeg", os.X_OK)
+
+
+def test_ensure_ffmpeg_prefers_bundled_build(tmp_path):
+    import os
+
+    exe = ".exe" if os.name == "nt" else ""
+    bundled = tmp_path / "bundle" / "ffmpeg"
+    bundled.mkdir(parents=True)
+    for name in ("ffmpeg", "ffprobe"):
+        (bundled / (name + exe)).write_text("")
+    with mock.patch("sys._MEIPASS", str(tmp_path / "bundle"), create=True), \
+            mock.patch("streamq.config.get_project_root", return_value=str(tmp_path)), \
+            mock.patch("shutil.which", side_effect=lambda name, path=None: f"/usr/bin/{name}"):
+        assert ffmpeg.ensure_ffmpeg() == str(bundled)

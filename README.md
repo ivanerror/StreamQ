@@ -23,11 +23,12 @@ Grab the latest build from the [Releases page](https://github.com/ivanerror/stre
 
 | Platform | File | How to run |
 | --- | --- | --- |
-| Windows 10/11 (x64) | `StreamQ-windows-x64.exe` | Double-click. If SmartScreen warns, click *More info* → *Run anyway* (the build is unsigned). |
-| macOS (Apple Silicon) | `StreamQ-macos-arm64.zip` | Unzip, then right-click `StreamQ.app` → *Open* the first time (unsigned app). Install FFmpeg with `brew install ffmpeg`. |
-| Linux (x64) | `StreamQ-linux-x64.tar.gz` | `tar -xzf StreamQ-linux-x64.tar.gz && ./StreamQ` |
+| Windows 10/11 (x64) | `StreamQ-Setup-windows-x64.exe` | Run the installer (no admin rights needed); start StreamQ from the Start menu. If SmartScreen warns, click *More info* → *Run anyway* (the build is unsigned). |
+| Windows, portable | `StreamQ-windows-x64-portable.zip` | Extract anywhere and run `StreamQ\StreamQ.exe`. |
+| macOS (Apple Silicon) | `StreamQ-macos-arm64.zip` | Unzip, then right-click `StreamQ.app` → *Open* the first time (unsigned app). |
+| Linux (x64) | `StreamQ-linux-x64.tar.gz` | `tar -xzf StreamQ-linux-x64.tar.gz && ./StreamQ/StreamQ` |
 
-On first launch StreamQ downloads FFmpeg (Windows/Linux) and the Deno JavaScript runtime in the background; the *Start Download* button becomes available once they are ready. App data and downloads are stored in `~/StreamQ/` (`%USERPROFILE%\StreamQ\` on Windows).
+FFmpeg is included in every package. On first launch StreamQ only downloads the small Deno JavaScript runtime in the background; the *Start Download* button becomes available once it is ready. App data and downloads are stored in `~/StreamQ/` (`%USERPROFILE%\StreamQ\` on Windows).
 
 ## Run from Source
 
@@ -98,16 +99,19 @@ All platforms use the same PyInstaller spec:
 
 ```bash
 pip install -r requirements.txt pyinstaller
+python scripts/fetch_ffmpeg.py        # downloads FFmpeg into vendor/ffmpeg to bundle it
 pyinstaller --noconfirm --clean StreamQ.spec
 ```
 
-Output: `dist/StreamQ.exe` (Windows), `dist/StreamQ` (Linux) or `dist/StreamQ.app` (macOS). On Windows you can also run `scripts\build_exe.bat`.
+Output: `dist/StreamQ/` folder (Windows/Linux, run `StreamQ.exe` / `StreamQ`) or `dist/StreamQ.app` (macOS). Without `fetch_ffmpeg.py` the build still works but falls back to a system FFmpeg or a first-run download. On Windows you can also run `scripts\build_exe.bat`; build the installer with [Inno Setup](https://jrsoftware.org/isinfo.php): `iscc /DAppVersion=1.1.0 installer\streamq.iss`.
+
+Bundled FFmpeg builds are GPL-licensed, from [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) (Windows/Linux) and [martin-riedl.de](https://ffmpeg.martin-riedl.de) (macOS); the license and source information ship in the package's `ffmpeg/` folder.
 
 ### Publishing a Release
 
 1. Bump `__version__` in `src/streamq/__init__.py` (and `version` in `pyproject.toml`/`setup.py`), update `CHANGELOG.md`
 2. Tag and push: `git tag v1.2.0 && git push origin v1.2.0`
-3. The **Release** workflow runs the tests, builds Windows/macOS/Linux executables and publishes them with `SHA256SUMS.txt` on the Releases page
+3. The **Release** workflow runs the tests, bundles FFmpeg, builds the Windows installer + portable zip, macOS app and Linux package, and publishes them with `SHA256SUMS.txt` on the Releases page
 
 The workflow fails if the tag does not match `__version__`. Running it manually (*Actions → Release → Run workflow*) only builds downloadable artifacts.
 
@@ -174,7 +178,7 @@ README.md
 - FFmpeg from `PATH` is used if installed (`sudo apt install ffmpeg`); otherwise a static build is downloaded on first run (x64/arm64)
 
 ### macOS
-- Install FFmpeg with `brew install ffmpeg` (Homebrew locations are detected even when launched from Finder)
+- Release builds include FFmpeg; when running from source, install it with `brew install ffmpeg` (Homebrew locations are detected even when launched from Finder)
 
 ## Development
 
